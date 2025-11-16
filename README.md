@@ -1,24 +1,24 @@
 # JWT Authentication with Keycloak
 
-A modern, responsive frontend for JWT authentication using Keycloak identity provider. Built with Flask, HTMX, and server-side rendering for a fast, secure, and developer-friendly experience.
+A modern, responsive frontend for JWT authentication using Keycloak identity provider. Built with **Java 21**, **Spring Boot 3.2**, **HTMX**, and **Thymeleaf** for server-side rendering - fast, secure, and enterprise-ready.
 
 ## Features
 
-- **JWT Authentication** - Secure token-based authentication with RS256 signature verification
-- **Keycloak Integration** - Enterprise-grade identity management with single sign-on
+- **JWT Authentication** - Secure OAuth2/OIDC authentication with Keycloak
+- **Spring Security** - Enterprise-grade security framework with OAuth2 client
 - **HTMX + SSR** - Fast, responsive UI with minimal JavaScript using server-side rendering
 - **Modern UI** - Clean, responsive design with dark/light mode support
-- **Token Management** - Automatic token refresh and session management
-- **Role-Based Access** - Display user roles and permissions from Keycloak
+- **Role-Based Access** - Automatic role extraction from Keycloak tokens
 - **Real-time Feedback** - Toast notifications and loading indicators
+- **Thymeleaf Templates** - Type-safe template engine with layout support
 
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.8+
+- Java 21
+- Maven 3.8+
 - Keycloak server (local or remote)
-- pip (Python package manager)
 
 ### Installation
 
@@ -28,51 +28,48 @@ A modern, responsive frontend for JWT authentication using Keycloak identity pro
    cd WernerTest
    ```
 
-2. **Create virtual environment**
+2. **Configure Keycloak**
+
+   Update `src/main/resources/application.yml`:
+   ```yaml
+   spring:
+     security:
+       oauth2:
+         client:
+           registration:
+             keycloak:
+               client-id: my-app
+               client-secret: your-client-secret
+           provider:
+             keycloak:
+               issuer-uri: http://localhost:8080/realms/myapp
+   ```
+
+   Or use environment variables:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   export KEYCLOAK_CLIENT_ID=my-app
+   export KEYCLOAK_CLIENT_SECRET=your-client-secret
+   export KEYCLOAK_ISSUER_URI=http://localhost:8080/realms/myapp
    ```
 
-3. **Install dependencies**
+3. **Build the application**
    ```bash
-   pip install -r requirements.txt
+   ./mvnw clean package
    ```
 
-4. **Configure environment**
+4. **Run the application**
    ```bash
-   cp .env.example .env
-   # Edit .env with your Keycloak settings
+   ./mvnw spring-boot:run
    ```
 
-5. **Start the application**
-   ```bash
-   python app.py
+5. **Open in browser**
    ```
-
-6. **Open in browser**
+   http://localhost:8081
    ```
-   http://localhost:5000
-   ```
-
-## Configuration
-
-Edit the `.env` file with your settings:
-
-```bash
-# Flask
-SECRET_KEY=your-super-secret-key-here
-
-# Keycloak
-KEYCLOAK_SERVER_URL=http://localhost:8080
-KEYCLOAK_REALM=myapp
-KEYCLOAK_CLIENT_ID=my-app
-KEYCLOAK_CLIENT_SECRET=your-client-secret
-```
 
 ## Keycloak Setup
 
-See [config/keycloak_setup.md](config/keycloak_setup.md) for detailed Keycloak configuration instructions.
+See [docs/keycloak-setup.md](docs/keycloak-setup.md) for detailed Keycloak configuration instructions.
 
 ### Quick Docker Setup
 
@@ -89,96 +86,120 @@ docker run -d \
 
 ```
 WernerTest/
-├── app.py                    # Main Flask application
-├── requirements.txt          # Python dependencies
-├── .env.example             # Environment variables template
-├── config/
-│   └── keycloak_setup.md    # Keycloak setup guide
-├── static/
-│   ├── css/
-│   │   └── style.css        # Modern CSS with dark mode
-│   └── js/
-│       └── main.js          # Frontend JavaScript
-└── templates/
-    ├── base.html            # Base template with HTMX
-    ├── index.html           # Landing page
-    ├── login.html           # Login form
-    ├── register.html        # Registration form
-    ├── dashboard.html       # Protected dashboard
-    ├── profile.html         # User profile page
-    ├── error.html           # Error page
-    └── partials/            # HTMX partial templates
-        ├── login_error.html
-        ├── register_error.html
-        ├── register_success.html
-        ├── toast.html
-        ├── profile_card.html
-        ├── token_info.html
-        └── error.html
+├── pom.xml                              # Maven configuration
+├── src/main/java/com/auth/keycloak/
+│   ├── Application.java                 # Main Spring Boot application
+│   ├── config/
+│   │   ├── SecurityConfig.java         # Spring Security configuration
+│   │   └── ThymeleafConfig.java        # Thymeleaf layout configuration
+│   ├── controller/
+│   │   ├── HomeController.java         # Landing and login pages
+│   │   ├── DashboardController.java    # Protected dashboard
+│   │   ├── ApiController.java          # HTMX API endpoints
+│   │   └── HealthController.java       # Health check endpoint
+│   ├── dto/
+│   │   ├── UserInfo.java               # User information DTO
+│   │   └── TokenInfo.java              # Token information DTO
+│   └── service/
+│       └── UserService.java            # User and token processing
+├── src/main/resources/
+│   ├── application.yml                  # Main configuration
+│   ├── application-dev.yml              # Development profile
+│   ├── templates/
+│   │   ├── layout.html                 # Base layout template
+│   │   ├── index.html                  # Landing page
+│   │   ├── login.html                  # Login page
+│   │   ├── dashboard.html              # Protected dashboard
+│   │   ├── profile.html                # User profile page
+│   │   └── fragments/
+│   │       ├── profile-card.html       # HTMX profile fragment
+│   │       └── token-info.html         # HTMX token info fragment
+│   └── static/
+│       ├── css/style.css               # Modern CSS with dark mode
+│       └── js/main.js                  # Frontend JavaScript
+└── docs/
+    └── keycloak-setup.md               # Keycloak setup guide
 ```
 
-## API Endpoints
+## Endpoints
 
 | Endpoint | Method | Description | Auth Required |
 |----------|--------|-------------|---------------|
 | `/` | GET | Landing page | No |
-| `/login` | GET/POST | User login | No |
-| `/register` | GET/POST | User registration | No |
+| `/login` | GET | Login page (redirects to Keycloak) | No |
+| `/oauth2/authorization/keycloak` | GET | Initiate Keycloak OAuth2 flow | No |
 | `/dashboard` | GET | Protected dashboard | Yes |
 | `/profile` | GET | User profile page | Yes |
-| `/logout` | POST | Logout user | No |
-| `/api/profile` | GET | User profile data (HTMX) | Yes |
-| `/api/token-info` | GET | JWT token information (HTMX) | Yes |
-| `/api/refresh-token` | POST | Refresh access token | Yes |
+| `/logout` | POST | Logout user (clears session & Keycloak) | Yes |
+| `/api/profile` | GET | Profile fragment (HTMX) | Yes |
+| `/api/token-info` | GET | Token info fragment (HTMX) | Yes |
 | `/health` | GET | Health check | No |
 
 ## Key Technologies
 
-- **Flask** - Lightweight Python web framework
+- **Java 21** - Latest LTS version with modern features
+- **Spring Boot 3.2** - Production-ready framework
+- **Spring Security 6** - OAuth2/OIDC client support
+- **Thymeleaf** - Server-side template engine
 - **HTMX** - High power tools for HTML
-- **Python-Keycloak** - Keycloak Python client
-- **PyJWT** - JSON Web Token implementation
-- **Jinja2** - Template engine
+- **Lombok** - Boilerplate reduction
 
 ## Security Features
 
-- JWT token verification with RS256
-- Secure session management
-- CSRF protection via Flask session
-- Token expiration handling
-- Automatic token refresh
-- Protected route decorator
-- XSS prevention
+- OAuth2/OpenID Connect authentication flow
+- Automatic JWT token validation
+- CSRF protection with cookie-based tokens
+- Session management with configurable timeout
+- Role extraction from Keycloak tokens (realm and client roles)
+- Secure logout with Keycloak session termination
+- Protected routes with Spring Security
 
 ## Development
 
 ### Running in Development Mode
 
 ```bash
-export FLASK_ENV=development
-export FLASK_DEBUG=1
-python app.py
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+With hot reload:
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Dspring.devtools.restart.enabled=true"
 ```
 
 ### Adding New Protected Routes
 
-```python
-from functools import wraps
+```java
+@Controller
+public class MyController {
 
-@app.route("/my-route")
-@login_required
-def my_route():
-    user_info = session.get("user_info", {})
-    return render_template("my_template.html", user_info=user_info)
+    @GetMapping("/protected-resource")
+    public String protectedResource(Authentication authentication, Model model) {
+        // Authentication object contains user details
+        return "my-template";
+    }
+}
 ```
 
-### Creating HTMX Partials
+### Creating HTMX Fragments
 
-1. Create a partial template in `templates/partials/`
-2. Add a route that returns the partial
-3. Use HTMX attributes to fetch and swap content
+1. Create a fragment in `templates/fragments/`:
+```html
+<div th:fragment="my-fragment">
+    <!-- Fragment content -->
+</div>
+```
 
-Example:
+2. Add a controller method:
+```java
+@GetMapping("/api/my-data")
+public String getMyData(Model model) {
+    model.addAttribute("data", myData);
+    return "fragments/my-fragment :: my-fragment";
+}
+```
+
+3. Use in HTML:
 ```html
 <button
     hx-get="/api/my-data"
@@ -203,44 +224,120 @@ The CSS uses CSS variables for easy customization. Edit `static/css/style.css`:
 }
 ```
 
-### Adding Features
+### Role-Based Authorization
 
-- **Two-Factor Authentication** - Integrate with Keycloak OTP
-- **Social Login** - Configure identity providers in Keycloak
-- **User Self-Registration** - Enable in Keycloak realm settings
-- **Password Reset** - Configure email in Keycloak
+Add method-level security:
+
+```java
+@PreAuthorize("hasRole('ADMIN')")
+@GetMapping("/admin")
+public String adminPage() {
+    return "admin";
+}
+```
+
+Or use in templates:
+
+```html
+<div sec:authorize="hasRole('ADMIN')">
+    Admin-only content
+</div>
+```
+
+## Configuration Options
+
+### application.yml
+
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: ${KEYCLOAK_CLIENT_ID:my-app}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+            scope:
+              - openid
+              - profile
+              - email
+              - roles
+        provider:
+          keycloak:
+            issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/master}
+
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    session:
+      timeout: 30m
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Authentication service unavailable"**
-   - Check Keycloak is running
-   - Verify KEYCLOAK_SERVER_URL
+1. **"redirect_uri_mismatch" error**
+   - Verify redirect URIs in Keycloak client settings
+   - Should be: `http://localhost:8081/*`
 
-2. **"Invalid token"**
-   - Check client secret
-   - Verify realm and client ID
+2. **No roles appearing**
+   - Check client scopes configuration in Keycloak
+   - Ensure roles are included in ID token
+   - Verify role mapper is configured
 
 3. **Session expires immediately**
    - Check token lifetime in Keycloak
-   - Verify SECRET_KEY is set
+   - Verify session timeout in application.yml
+   - Ensure cookies are enabled
 
-4. **HTMX not working**
+4. **HTMX not updating**
    - Check browser console for errors
-   - Ensure HTMX is loaded correctly
+   - Verify CSRF token is included in requests
+   - Check endpoint returns correct fragment
 
 ## Production Deployment
 
-1. Use production WSGI server (gunicorn, uWSGI)
-2. Enable HTTPS for both app and Keycloak
-3. Set secure Flask configuration
-4. Use environment variables for secrets
-5. Configure proper logging
+### Build JAR
 
-Example with gunicorn:
 ```bash
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+./mvnw clean package -DskipTests
+java -jar target/keycloak-jwt-auth-1.0.0.jar
+```
+
+### Docker Deployment
+
+```dockerfile
+FROM eclipse-temurin:21-jre
+COPY target/keycloak-jwt-auth-1.0.0.jar app.jar
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "/app.jar"]
+```
+
+### Production Configuration
+
+1. Use HTTPS for both app and Keycloak
+2. Set proper environment variables
+3. Configure session persistence (Redis, JDBC)
+4. Enable production profile
+5. Set up proper logging and monitoring
+
+Example:
+```bash
+java -jar app.jar \
+  --spring.profiles.active=prod \
+  --server.ssl.enabled=true \
+  --server.ssl.key-store=/path/to/keystore.p12
+```
+
+## Testing
+
+```bash
+# Run all tests
+./mvnw test
+
+# Run with coverage
+./mvnw test jacoco:report
 ```
 
 ## Contributing

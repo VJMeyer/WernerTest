@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <h1>Welcome, <span th:text="${userInfo.username ?: userInfo.name ?: 'User'}">User</span></h1>
+            <p>Manage your authentication session and view token information</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- User Profile Card -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        User Profile
+                    </h2>
+                    <button
+                        class="btn btn-sm btn-outline"
+                        hx-get="/api/profile"
+                        hx-target="#profile-content"
+                        hx-swap="innerHTML"
+                        hx-indicator="#profile-loader"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon-only">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+                <div id="profile-content" class="card-content">
+                    <div th:replace="~{fragments/profile-card :: profile-card}"></div>
+                </div>
+                <div id="profile-loader" class="htmx-indicator card-loader">
+                    <svg class="spinner" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="32" stroke-linecap="round"></circle>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Token Information Card -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                        Token Information
+                    </h2>
+                    <button
+                        class="btn btn-sm btn-outline"
+                        hx-get="/api/token-info"
+                        hx-target="#token-content"
+                        hx-swap="innerHTML"
+                        hx-indicator="#token-loader"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon-only">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+                <div id="token-content" class="card-content">
+                    <div th:replace="~{fragments/token-info :: token-info}"></div>
+                </div>
+                <div id="token-loader" class="htmx-indicator card-loader">
+                    <svg class="spinner" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="32" stroke-linecap="round"></circle>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Session Actions Card -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        Session Actions
+                    </h2>
+                </div>
+                <div class="card-content">
+                    <div class="action-buttons">
+                        <a th:href="@{/profile}" class="btn btn-outline btn-block">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            View Full Profile
+                        </a>
+
+                        <form th:action="@{/logout}" method="post">
+                            <button type="submit" class="btn btn-danger btn-block">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Realm Roles Card -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Roles &amp; Permissions
+                    </h2>
+                </div>
+                <div class="card-content">
+                    <div class="roles-list">
+                        <th:block th:if="${userInfo.realmRoles != null and !userInfo.realmRoles.empty}">
+                            <span th:each="role : ${userInfo.realmRoles}"
+                                  th:text="${role}"
+                                  class="badge badge-primary">Role</span>
+                        </th:block>
+                        <p th:if="${userInfo.realmRoles == null or userInfo.realmRoles.empty}"
+                           class="text-muted">No realm roles assigned</p>
+                    </div>
+
+                    <th:block th:if="${userInfo.clientRoles != null and !userInfo.clientRoles.empty}">
+                        <h4 class="mt-3">Client Roles</h4>
+                        <div th:each="entry : ${userInfo.clientRoles}" class="client-roles">
+                            <strong th:text="${entry.key + ':'}">Client:</strong>
+                            <div class="roles-list">
+                                <span th:each="role : ${entry.value}"
+                                      th:text="${role}"
+                                      class="badge badge-secondary">Role</span>
+                            </div>
+                        </div>
+                    </th:block>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

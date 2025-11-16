@@ -1,0 +1,25 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: my-app
+            client-secret: your-client-secret-here
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8080/realms/myapp
+
+  thymeleaf:
+    cache: false
+
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.auth.keycloak: DEBUG

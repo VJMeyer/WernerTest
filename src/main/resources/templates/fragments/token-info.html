@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="token-info" class="token-info">
+    <div class="info-list">
+        <div class="info-item">
+            <span class="info-label">Subject (sub)</span>
+            <span class="info-value monospace"
+                  th:text="${tokenInfo.subject != null ? (tokenInfo.subject.length() > 20 ? tokenInfo.subject.substring(0,20) + '...' : tokenInfo.subject) : 'N/A'}">N/A</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Issuer</span>
+            <span class="info-value monospace" th:text="${tokenInfo.issuer ?: 'N/A'}">N/A</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Audience</span>
+            <span class="info-value monospace" th:text="${tokenInfo.audience ?: 'N/A'}">N/A</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Issued At</span>
+            <span class="info-value"
+                  th:text="${tokenInfo.issuedAt != null ? #temporals.format(tokenInfo.issuedAt, 'yyyy-MM-dd HH:mm:ss') : 'N/A'}">N/A</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Expires At</span>
+            <span class="info-value"
+                  th:text="${tokenInfo.expiresAt != null ? #temporals.format(tokenInfo.expiresAt, 'yyyy-MM-dd HH:mm:ss') : 'N/A'}">N/A</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Token Type</span>
+            <span class="info-value badge badge-info" th:text="${tokenInfo.tokenType ?: 'Bearer'}">Bearer</span>
+        </div>
+    </div>
+</div>
+</body>
+</html>
