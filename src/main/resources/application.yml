@@ -1,0 +1,85 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: jwt-keycloak-auth
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/wernertest
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # OAuth2 Resource Server Configuration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/wernertest
+          jwk-set-uri: http://localhost:8180/realms/wernertest/protocol/openid-connect/certs
+      client:
+        registration:
+          keycloak:
+            client-id: wernertest-app
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:your-client-secret}
+            authorization-grant-type: authorization_code
+            scope: openid,profile,email,roles
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8180/realms/wernertest
+            user-name-attribute: preferred_username
+
+# Keycloak Admin Client Configuration
+keycloak:
+  auth-server-url: http://localhost:8180
+  realm: wernertest
+  admin:
+    realm: master
+    username: admin
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+    client-id: admin-cli
+
+# Application-specific settings
+app:
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:4200
+  jwt:
+    # Custom claims from Keycloak
+    organization-claim: organization
+    roles-claim: realm_access.roles
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# Logging
+logging:
+  level:
+    com.wernertest: DEBUG
+    org.springframework.security: INFO
+    org.keycloak: INFO
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method

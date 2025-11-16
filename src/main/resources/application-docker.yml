@@ -1,0 +1,21 @@
+# Docker Profile Configuration
+spring:
+  datasource:
+    url: jdbc:postgresql://app-db:5432/wernertest
+    username: postgres
+    password: postgres
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/wernertest
+          jwk-set-uri: http://keycloak:8080/realms/wernertest/protocol/openid-connect/certs
+
+keycloak:
+  auth-server-url: http://keycloak:8080
+
+logging:
+  level:
+    com.wernertest: INFO
+    org.springframework.security: WARN
