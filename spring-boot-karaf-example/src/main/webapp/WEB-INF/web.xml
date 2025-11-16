@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+         https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
+    <display-name>Spring Boot Karaf JDBC Application</display-name>
+
+    <!-- JNDI DataSource Reference -->
+    <resource-ref>
+        <description>Application DataSource</description>
+        <res-ref-name>jdbc/AppDataSource</res-ref-name>
+        <res-type>javax.sql.DataSource</res-type>
+        <res-auth>Container</res-auth>
+    </resource-ref>
+
+    <!-- Environment entries for configuration -->
+    <env-entry>
+        <env-entry-name>app/environment</env-entry-name>
+        <env-entry-type>java.lang.String</env-entry-type>
+        <env-entry-value>webcontainer</env-entry-value>
+    </env-entry>
+
+</web-app>

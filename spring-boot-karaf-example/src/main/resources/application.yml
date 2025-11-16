@@ -1,0 +1,108 @@
+spring:
+  application:
+    name: spring-boot-karaf-jdbc
+
+  # Default profile - standalone with H2
+  datasource:
+    # JNDI name (will be used if available, otherwise falls back to direct connection)
+    jndi-name: jdbc/AppDataSource
+    # Direct connection fallback settings
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  # H2 Console (for development)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+# Server configuration (for standalone mode)
+server:
+  port: 8080
+  servlet:
+    context-path: /spring-jdbc-app
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Application-specific settings
+app:
+  environment: standalone
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.example.demo: DEBUG
+    org.springframework.jdbc: DEBUG
+
+---
+# Karaf/OSGi profile
+spring:
+  config:
+    activate:
+      on-profile: karaf
+
+  datasource:
+    # In Karaf, use JNDI lookup from OSGi service registry
+    jndi-name: osgi:service/javax.sql.DataSource
+
+app:
+  environment: karaf-osgi
+
+logging:
+  level:
+    root: INFO
+    com.example.demo: DEBUG
+
+---
+# Docker profile
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:appdb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  environment: docker
+
+---
+# Production profile
+spring:
+  config:
+    activate:
+      on-profile: production
+
+  datasource:
+    jndi-name: java:comp/env/jdbc/AppDataSource
+
+  h2:
+    console:
+      enabled: false
+
+app:
+  environment: production
+
+logging:
+  level:
+    root: WARN
+    com.example.demo: INFO

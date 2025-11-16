@@ -1,0 +1,55 @@
+# Karaf Console Commands for Deploying Spring Boot JDBC Application
+# =================================================================
+
+# 1. Install required features
+feature:install http
+feature:install http-whiteboard
+feature:install war
+feature:install jdbc
+feature:install jndi
+feature:install transaction
+feature:install pax-web-http-jetty
+
+# 2. Install H2 database driver
+bundle:install -s mvn:com.h2database/h2/2.2.224
+
+# 3. Create DataSource (copy datasource-h2.cfg to $KARAF_HOME/etc/org.ops4j.datasource-AppDataSource.cfg)
+
+# 4. Verify DataSource is registered
+jdbc:ds-list
+
+# 5. Deploy the WAR file
+# Option A: From Maven repository
+bundle:install -s webbundle:mvn:com.example/spring-boot-karaf-jdbc/1.0.0-SNAPSHOT/war?Web-ContextPath=/spring-jdbc-app
+
+# Option B: From file system
+bundle:install -s webbundle:file:///path/to/spring-boot-karaf-jdbc-1.0.0-SNAPSHOT.war?Web-ContextPath=/spring-jdbc-app
+
+# 6. Verify deployment
+bundle:list | grep spring-boot-karaf
+web:list
+
+# 7. Check HTTP service
+http:list
+
+# 8. Access the application
+# Default: http://localhost:8181/spring-jdbc-app/api/products
+
+# Proxy Configuration (optional)
+# ==============================
+# To use Karaf's integrated proxy, configure in $KARAF_HOME/etc/org.ops4j.pax.web.cfg:
+# org.osgi.service.http.port = 8181
+# org.osgi.service.http.port.secure = 8443
+
+# Useful Commands
+# ===============
+bundle:info <bundle-id>          # Show bundle details
+log:tail                         # View logs
+web:context-list                 # List web contexts
+jdbc:ds-info AppDataSource       # Show DataSource info
+
+# Troubleshooting
+# ===============
+diag <bundle-id>                 # Diagnose bundle issues
+bundle:headers <bundle-id>       # Show bundle manifest
+package:imports <bundle-id>      # Show package imports

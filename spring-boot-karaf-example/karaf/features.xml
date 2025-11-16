@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<features name="spring-boot-karaf-jdbc-${project.version}"
+          xmlns="http://karaf.apache.org/xmlns/features/v1.5.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://karaf.apache.org/xmlns/features/v1.5.0
+          http://karaf.apache.org/xmlns/features/v1.5.0">
+
+    <!-- Feature for the Spring Boot JDBC Web Application -->
+    <feature name="spring-boot-karaf-jdbc" version="${project.version}" description="Spring Boot JDBC WAB">
+
+        <!-- Required Karaf Features -->
+        <feature>http</feature>
+        <feature>http-whiteboard</feature>
+        <feature>war</feature>
+        <feature>jdbc</feature>
+        <feature>jndi</feature>
+        <feature>transaction</feature>
+
+        <!-- PAX Web for Servlet Container -->
+        <feature>pax-web-http</feature>
+        <feature>pax-web-jetty</feature>
+
+        <!-- H2 Database Driver (for demo) -->
+        <bundle>mvn:com.h2database/h2/2.2.224</bundle>
+
+        <!-- DataSource configuration -->
+        <config name="org.ops4j.datasource-AppDataSource">
+            osgi.jdbc.driver.class = org.h2.Driver
+            dataSourceName = AppDataSource
+            url = jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+            user = sa
+            password =
+        </config>
+
+        <!-- Deploy the WAR as a Web Application Bundle -->
+        <bundle start-level="90">
+            webbundle:mvn:com.example/spring-boot-karaf-jdbc/${project.version}/war?Web-ContextPath=/spring-jdbc-app
+        </bundle>
+
+    </feature>
+
+    <!-- Feature with PostgreSQL DataSource (for production) -->
+    <feature name="spring-boot-karaf-jdbc-postgres" version="${project.version}" description="Spring Boot JDBC WAB with PostgreSQL">
+
+        <feature>http</feature>
+        <feature>http-whiteboard</feature>
+        <feature>war</feature>
+        <feature>jdbc</feature>
+        <feature>jndi</feature>
+        <feature>transaction</feature>
+        <feature>pax-web-http</feature>
+        <feature>pax-web-jetty</feature>
+
+        <!-- PostgreSQL Driver -->
+        <bundle>mvn:org.postgresql/postgresql/42.7.1</bundle>
+
+        <!-- PostgreSQL DataSource configuration -->
+        <config name="org.ops4j.datasource-AppDataSource">
+            osgi.jdbc.driver.class = org.postgresql.Driver
+            dataSourceName = AppDataSource
+            url = jdbc:postgresql://localhost:5432/appdb
+            user = postgres
+            password = postgres
+        </config>
+
+        <!-- Deploy the WAR -->
+        <bundle start-level="90">
+            webbundle:mvn:com.example/spring-boot-karaf-jdbc/${project.version}/war?Web-ContextPath=/spring-jdbc-app
+        </bundle>
+
+    </feature>
+
+</features>
