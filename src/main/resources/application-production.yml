@@ -1,0 +1,53 @@
+spring:
+  # Production JNDI DataSource Configuration
+  datasource:
+    jndi-name: java:comp/env/jdbc/EnvironmentalMonitoringDS
+
+  # PostgreSQL Configuration (when not using JNDI)
+  # datasource:
+  #   url: jdbc:postgresql://localhost:5432/envmonitoring
+  #   driver-class-name: org.postgresql.Driver
+  #   username: ${DB_USERNAME}
+  #   password: ${DB_PASSWORD}
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+
+  # Disable H2 Console in production
+  h2:
+    console:
+      enabled: false
+
+# Server Configuration for Production
+server:
+  port: 8080
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 2048
+
+# Logging Configuration for Production
+logging:
+  level:
+    root: WARN
+    com.environmental.monitoring: INFO
+    org.springframework.modulith: INFO
+    org.hibernate.SQL: WARN
+    org.apache.olingo: WARN
+
+# Production Security Settings
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized

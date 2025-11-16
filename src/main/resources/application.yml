@@ -1,0 +1,98 @@
+spring:
+  application:
+    name: environmental-monitoring-odata
+
+  # JNDI DataSource Configuration (for production deployment)
+  # Uncomment and configure for JNDI lookup
+  # datasource:
+  #   jndi-name: java:comp/env/jdbc/EnvironmentalMonitoringDS
+
+  # Development DataSource Configuration (H2 in-memory)
+  datasource:
+    url: jdbc:h2:mem:envmonitoringdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    hikari:
+      pool-name: EnvMonitoringHikariCP
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+  # JPA / Hibernate Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 50
+          fetch_size: 100
+        order_inserts: true
+        order_updates: true
+        connection:
+          provider_disables_autocommit: true
+        id:
+          optimizer:
+            pooled:
+              preferred: pooled-lo
+    open-in-view: false
+    show-sql: false
+
+  # H2 Console (Development only)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Spring Modulith Configuration
+spring.modulith:
+  detection-strategy: direct-sub-packages
+  events:
+    republish-outstanding-events-on-restart: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.environmental.monitoring: DEBUG
+    org.springframework.modulith: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.apache.olingo: INFO
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,modulith
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# Application-specific Configuration
+app:
+  odata:
+    service-root: /api/odata
+  monitoring:
+    default-page-size: 100
+    max-page-size: 1000
