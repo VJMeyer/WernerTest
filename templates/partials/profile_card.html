@@ -1,0 +1,25 @@
+<div class="profile-info">
+    <div class="avatar">
+        {{ user_info.get('preferred_username', 'U')[0].upper() }}
+    </div>
+    <div class="info-list">
+        <div class="info-item">
+            <span class="info-label">Username</span>
+            <span class="info-value">{{ user_info.get('preferred_username', 'N/A') }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Email</span>
+            <span class="info-value">{{ user_info.get('email', 'N/A') }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Name</span>
+            <span class="info-value">{{ user_info.get('name', user_info.get('given_name', '') + ' ' + user_info.get('family_name', '')) or 'N/A' }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Email Verified</span>
+            <span class="info-value badge {% if user_info.get('email_verified') %}badge-success{% else %}badge-warning{% endif %}">
+                {{ 'Yes' if user_info.get('email_verified') else 'No' }}
+            </span>
+        </div>
+    </div>
+</div>
