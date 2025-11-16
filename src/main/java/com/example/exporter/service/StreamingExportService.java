@@ -1,6 +1,7 @@
 package com.example.exporter.service;
 
 import com.example.exporter.cache.LookupCache;
+import com.example.exporter.config.DatabaseStreamingConfig;
 import com.example.exporter.config.ExporterProperties;
 import com.example.exporter.model.ExportDefinition;
 import com.example.exporter.writer.StreamingWriter;
@@ -21,13 +22,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Core service for streaming large datasets from PostgreSQL.
+ * Core service for streaming large datasets from PostgreSQL, Oracle, and MSSQL.
  *
  * Key features:
- * - Uses server-side cursors for memory-efficient streaming
+ * - Uses database-specific cursors for memory-efficient streaming
  * - Applies in-memory lookup resolution to avoid expensive JOINs
  * - Streams data directly to output without buffering
  * - Supports configurable fetch size for optimal performance
+ * - Auto-detects database type and applies optimal configurations
  *
  * Performance characteristics:
  * - Memory usage: O(fetchSize) instead of O(totalRows)
@@ -42,13 +44,16 @@ public class StreamingExportService {
     private final DataSource dataSource;
     private final LookupCache lookupCache;
     private final ExporterProperties properties;
+    private final DatabaseStreamingConfig dbConfig;
 
     public StreamingExportService(DataSource dataSource,
                                   LookupCache lookupCache,
-                                  ExporterProperties properties) {
+                                  ExporterProperties properties,
+                                  DatabaseStreamingConfig dbConfig) {
         this.dataSource = dataSource;
         this.lookupCache = lookupCache;
         this.properties = properties;
+        this.dbConfig = dbConfig;
     }
 
     /**
@@ -65,17 +70,19 @@ public class StreamingExportService {
                        StreamingWriter writer,
                        OutputStream outputStream) throws SQLException, IOException {
 
-        log.info("Starting export '{}' with query: {}", exportDefinition.name(), exportDefinition.mainQuery());
+        log.info("Starting export '{}' with query: {} (Database: {})",
+                exportDefinition.name(), exportDefinition.mainQuery(), dbConfig.getDatabaseType());
 
         List<String> outputColumns = exportDefinition.getAllOutputColumns();
         writer.start(outputStream, outputColumns);
 
         long rowCount = 0;
         int flushInterval = properties.getStreaming().getFlushInterval();
+        int fetchSize = dbConfig.getOptimalFetchSize();
 
         try (Connection connection = dataSource.getConnection()) {
-            // CRITICAL: Configure connection for server-side cursor streaming
-            connection.setAutoCommit(false); // Required for server-side cursor
+            // Apply database-specific optimizations
+            dbConfig.optimizeConnection(connection);
 
             try (PreparedStatement stmt = connection.prepareStatement(
                     exportDefinition.mainQuery(),
@@ -84,9 +91,9 @@ public class StreamingExportService {
 
                 // Set fetch size - controls how many rows are fetched at a time
                 // This is the key to memory-efficient streaming
-                stmt.setFetchSize(properties.getFetchSize());
+                stmt.setFetchSize(fetchSize);
 
-                log.info("Executing query with fetch size: {}", properties.getFetchSize());
+                log.info("Executing query with fetch size: {} ({})", fetchSize, dbConfig.getDatabaseType());
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     ResultSetMetaData metaData = rs.getMetaData();
@@ -109,8 +116,8 @@ public class StreamingExportService {
                 }
             }
 
-            // Rollback the transaction (we only read data)
-            connection.rollback();
+            // Database-specific cleanup
+            dbConfig.cleanupConnection(connection);
         }
 
         writer.end();
@@ -182,20 +189,22 @@ public class StreamingExportService {
                              StreamingWriter writer,
                              OutputStream outputStream) throws SQLException, IOException {
 
-        log.info("Starting simple export with query: {}", query);
+        log.info("Starting simple export with query: {} (Database: {})", query, dbConfig.getDatabaseType());
 
         long rowCount = 0;
         int flushInterval = properties.getStreaming().getFlushInterval();
+        int fetchSize = dbConfig.getOptimalFetchSize();
 
         try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
+            // Apply database-specific optimizations
+            dbConfig.optimizeConnection(connection);
 
             try (PreparedStatement stmt = connection.prepareStatement(
                     query,
                     ResultSet.TYPE_FORWARD_ONLY,
                     ResultSet.CONCUR_READ_ONLY)) {
 
-                stmt.setFetchSize(properties.getFetchSize());
+                stmt.setFetchSize(fetchSize);
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     ResultSetMetaData metaData = rs.getMetaData();
@@ -227,7 +236,8 @@ public class StreamingExportService {
                 }
             }
 
-            connection.rollback();
+            // Database-specific cleanup
+            dbConfig.cleanupConnection(connection);
         }
 
         writer.end();

@@ -1,14 +1,16 @@
-# PostgreSQL High-Speed Streaming Exporter
+# High-Speed Database Streaming Exporter
 
-A high-performance data exporter for PostgreSQL databases that handles tables with 30-300 million records using true streaming output.
+A high-performance data exporter for **PostgreSQL**, **Oracle**, and **Microsoft SQL Server** databases that handles tables with 30-300 million records using true streaming output.
 
 ## Key Features
 
-- **True Streaming Output**: Memory-efficient export using server-side cursors
+- **Multi-Database Support**: PostgreSQL, Oracle, and MSSQL with auto-detection
+- **True Streaming Output**: Memory-efficient export using database-specific cursors
 - **In-Memory Lookup Caching**: Avoids expensive JOINs by caching small reference tables
 - **Format Flexibility**: JSON, CSV, and Parquet output based on HTTP Accept header
 - **Virtual Threads**: Java 21 virtual threads for high concurrency
 - **Configurable Performance**: Tunable fetch size, buffer size, and flush intervals
+- **Database-Specific Optimizations**: Automatic tuning for each database type
 
 ## Architecture
 
@@ -23,9 +25,9 @@ A high-performance data exporter for PostgreSQL databases that handles tables wi
                                │                      │          │
                                ▼                      ▼          ▼
                         ┌─────────────┐    ┌──────────────┐  ┌──────┐
-                        │   Lookup    │    │  PostgreSQL  │  │Writer│
-                        │   Cache     │    │   Database   │  │(JSON/│
-                        │ (In-Memory) │    │ (Large Table)│  │ CSV) │
+                        │   Lookup    │    │   Database   │  │Writer│
+                        │   Cache     │    │  (PG/Oracle/ │  │(JSON/│
+                        │ (In-Memory) │    │    MSSQL)    │  │ CSV) │
                         └─────────────┘    └──────────────┘  └──────┘
 ```
 
@@ -50,20 +52,48 @@ A high-performance data exporter for PostgreSQL databases that handles tables wi
 ### Prerequisites
 
 - Java 21 or later
-- PostgreSQL 12 or later
+- One of the following databases:
+  - PostgreSQL 12 or later
+  - Oracle 19c or later
+  - Microsoft SQL Server 2019 or later
 - Maven 3.8+
 
 ### Configuration
 
-Edit `src/main/resources/application.yml`:
+Edit `src/main/resources/application.yml`. The application **auto-detects the database type** from the JDBC URL:
 
+**PostgreSQL:**
 ```yaml
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/your_database
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+```
 
+**Oracle:**
+```yaml
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@//localhost:1521/ORCL
+    username: ${DB_USERNAME:system}
+    password: ${DB_PASSWORD:oracle}
+    driver-class-name: oracle.jdbc.OracleDriver
+```
+
+**Microsoft SQL Server:**
+```yaml
+spring:
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=your_database;encrypt=false;responseBuffering=adaptive
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:YourPassword123}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+```
+
+**Common settings:**
+```yaml
 exporter:
   fetch-size: 10000      # Rows fetched per database round-trip
   buffer-size: 65536     # Output buffer size
@@ -114,17 +144,43 @@ curl http://localhost:8080/api/export
 curl http://localhost:8080/api/export/cache/stats
 ```
 
+## Database-Specific Optimizations
+
+The exporter automatically detects the database type and applies optimal settings:
+
+### PostgreSQL
+- Uses server-side cursors with `autoCommit=false`
+- Requires `setFetchSize()` for cursor-based streaming
+- Connection is rolled back after query (read-only transaction)
+
+### Oracle
+- Uses row prefetch with `setFetchSize()`
+- Works with `autoCommit=true`
+- Best performance with fetch sizes >= 1000
+- Consider setting `oracle.jdbc.defaultRowPrefetch` in connection properties
+
+### Microsoft SQL Server
+- Uses adaptive buffering for streaming
+- Requires `responseBuffering=adaptive` in connection URL
+- Fetch size capped at 10000 for optimal performance
+- Uses forward-only, read-only cursors
+
 ## Performance Tuning
 
 ### Fetch Size (`exporter.fetch-size`)
 
-Controls how many rows are fetched from PostgreSQL at a time.
+Controls how many rows are fetched from the database at a time.
 
 | Fetch Size | Memory Usage | Network Round-Trips | Recommended For |
 |------------|--------------|---------------------|-----------------|
 | 1,000      | Low          | High               | Memory-constrained environments |
 | 10,000     | Medium       | Medium             | General purpose (default) |
 | 50,000     | High         | Low                | High-bandwidth, low-latency networks |
+
+**Database-specific recommendations:**
+- **PostgreSQL**: 5,000 - 20,000 (depends on row size)
+- **Oracle**: 10,000 - 50,000 (Oracle handles larger fetches well)
+- **MSSQL**: 1,000 - 10,000 (auto-capped at 10,000)
 
 ### Buffer Size (`exporter.buffer-size`)
 
@@ -279,11 +335,13 @@ src/main/java/com/example/exporter/
 ├── Application.java                 # Spring Boot main class
 ├── config/
 │   ├── ExporterProperties.java      # Configuration properties
-│   └── JacksonConfig.java           # JSON configuration
+│   ├── JacksonConfig.java           # JSON configuration
+│   ├── DatabaseType.java            # Database type enum (PG, Oracle, MSSQL)
+│   └── DatabaseStreamingConfig.java # Database-specific streaming config
 ├── controller/
 │   └── ExportController.java        # REST API endpoints
 ├── service/
-│   └── StreamingExportService.java  # Core streaming logic
+│   └── StreamingExportService.java  # Core streaming logic (multi-DB support)
 ├── cache/
 │   └── LookupCache.java             # In-memory lookup cache
 ├── model/

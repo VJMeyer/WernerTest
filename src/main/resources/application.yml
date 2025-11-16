@@ -10,18 +10,33 @@ server:
 
 spring:
   application:
-    name: postgres-high-speed-exporter
+    name: high-speed-database-exporter
 
   # Enable virtual threads (Java 21 feature)
   threads:
     virtual:
       enabled: true
 
+  # Database configuration - auto-detects type from URL
+  # Uncomment ONE of the following datasource configurations:
   datasource:
+    # ========== PostgreSQL Configuration ==========
     url: jdbc:postgresql://localhost:5432/your_database
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+
+    # ========== Oracle Configuration (uncomment to use) ==========
+    # url: jdbc:oracle:thin:@//localhost:1521/ORCL
+    # username: ${DB_USERNAME:system}
+    # password: ${DB_PASSWORD:oracle}
+    # driver-class-name: oracle.jdbc.OracleDriver
+
+    # ========== MSSQL Configuration (uncomment to use) ==========
+    # url: jdbc:sqlserver://localhost:1433;databaseName=your_database;encrypt=false;responseBuffering=adaptive
+    # username: ${DB_USERNAME:sa}
+    # password: ${DB_PASSWORD:YourPassword123}
+    # driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
     # HikariCP connection pool optimization
     hikari:
@@ -30,9 +45,10 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-      # Important for streaming large result sets
-      auto-commit: false
-      connection-init-sql: "SET statement_timeout = '3600000'"
+      # Note: auto-commit is configured dynamically based on database type
+      # PostgreSQL: requires auto-commit=false for server-side cursors
+      # Oracle: works with auto-commit=true
+      # MSSQL: auto-commit=false for cursor behavior
 
   # Jackson configuration
   jackson:

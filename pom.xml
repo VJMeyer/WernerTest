@@ -14,8 +14,8 @@
     <groupId>com.example</groupId>
     <artifactId>postgres-high-speed-exporter</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>PostgreSQL High-Speed Exporter</name>
-    <description>High-speed streaming data exporter for PostgreSQL with JSON and CSV support</description>
+    <name>High-Speed Database Exporter</name>
+    <description>High-speed streaming data exporter for PostgreSQL, Oracle, and MSSQL with JSON, CSV, and Parquet support</description>
 
     <properties>
         <java.version>21</java.version>
@@ -40,6 +40,22 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Oracle JDBC Driver -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <version>23.3.0.23.09</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Microsoft SQL Server JDBC Driver -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.4.2.jre11</version>
             <scope>runtime</scope>
         </dependency>
 
