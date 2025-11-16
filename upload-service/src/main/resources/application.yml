@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: upload-service
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 2GB
+      max-request-size: 2GB
+      file-size-threshold: 10MB
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+storage:
+  upload-dir: ./uploads
+  max-file-size: 10737418240  # 10 GB
+
+logging:
+  level:
+    de.kisters.hmt.cloud: DEBUG
+    org.springframework.amqp: INFO

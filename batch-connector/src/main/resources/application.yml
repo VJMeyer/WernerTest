@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: batch-connector
+  main:
+    web-application-type: none
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: auto
+        concurrency: 1
+        max-concurrency: 5
+
+wiskibat:
+  executable-path: wiskBat.exe
+  batch-file-directory: ./batch-files
+  process-timeout-seconds: 3600
+  delete-after-execution: false
+
+logging:
+  level:
+    de.kisters.hmt.cloud: DEBUG
+    org.springframework.amqp: INFO
