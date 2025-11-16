@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<features name="spring-boot-osgi-wrapper-${project.version}"
+          xmlns="http://karaf.apache.org/xmlns/features/v1.5.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://karaf.apache.org/xmlns/features/v1.5.0
+          http://karaf.apache.org/xmlns/features/v1.5.0">
+
+    <!--
+        Feature for Spring Boot JAR with OSGi Lifecycle Wrapper
+
+        This approach:
+        - Spring Boot runs independently with embedded Tomcat
+        - OSGi manages lifecycle (activate/deactivate)
+        - DataSource provided by Karaf's JNDI/JDBC
+        - Spring Boot exposes its own HTTP port (not using Karaf's PAX Web)
+    -->
+    <feature name="spring-boot-osgi-lifecycle" version="${project.version}" description="Spring Boot with OSGi Lifecycle Management">
+
+        <!-- Required Karaf Features -->
+        <feature>jdbc</feature>
+        <feature>jndi</feature>
+        <feature>scr</feature> <!-- Declarative Services Runtime -->
+
+        <!-- H2 Database Driver -->
+        <bundle>mvn:com.h2database/h2/2.2.224</bundle>
+
+        <!-- SLF4J Logging -->
+        <bundle>mvn:org.slf4j/slf4j-api/2.0.9</bundle>
+
+        <!-- DataSource Configuration -->
+        <config name="org.ops4j.datasource-AppDataSource">
+            osgi.jdbc.driver.class = org.h2.Driver
+            dataSourceName = AppDataSource
+            url = jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+            user = sa
+            password =
+        </config>
+
+        <!-- Spring Boot Application Configuration -->
+        <config name="com.example.springboot">
+            server.port = 8090
+            server.context-path = /
+            spring.profiles.active = osgi
+        </config>
+
+        <!-- OSGi Lifecycle Wrapper Bundle (includes Spring Boot app) -->
+        <bundle start-level="90">
+            mvn:com.example/osgi-lifecycle-wrapper/${project.version}
+        </bundle>
+
+    </feature>
+
+    <!-- Feature with PostgreSQL for production -->
+    <feature name="spring-boot-osgi-lifecycle-postgres" version="${project.version}" description="Spring Boot with PostgreSQL">
+
+        <feature>jdbc</feature>
+        <feature>jndi</feature>
+        <feature>scr</feature>
+
+        <!-- PostgreSQL Driver -->
+        <bundle>mvn:org.postgresql/postgresql/42.7.1</bundle>
+        <bundle>mvn:org.slf4j/slf4j-api/2.0.9</bundle>
+
+        <!-- PostgreSQL DataSource -->
+        <config name="org.ops4j.datasource-AppDataSource">
+            osgi.jdbc.driver.class = org.postgresql.Driver
+            dataSourceName = AppDataSource
+            url = jdbc:postgresql://localhost:5432/appdb
+            user = postgres
+            password = postgres
+        </config>
+
+        <!-- Spring Boot Configuration -->
+        <config name="com.example.springboot">
+            server.port = 8090
+            server.context-path = /
+            spring.profiles.active = osgi
+        </config>
+
+        <bundle start-level="90">
+            mvn:com.example/osgi-lifecycle-wrapper/${project.version}
+        </bundle>
+
+    </feature>
+
+</features>

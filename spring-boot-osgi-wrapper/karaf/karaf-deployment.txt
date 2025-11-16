@@ -1,0 +1,113 @@
+# Karaf Deployment Commands for Spring Boot JAR with OSGi Lifecycle Wrapper
+# ===========================================================================
+
+# IMPORTANT: This approach differs from WAB deployment:
+# - Spring Boot runs its OWN embedded Tomcat server
+# - Karaf only manages lifecycle (start/stop) and provides DataSource
+# - Spring Boot app is accessible on its own port (default: 8090)
+# - Karaf's PAX Web is NOT used
+
+# Step 1: Install required Karaf features
+# ========================================
+feature:install jdbc
+feature:install jndi
+feature:install scr  # Declarative Services Runtime
+
+# Step 2: Install H2 Database Driver
+# ===================================
+bundle:install -s mvn:com.h2database/h2/2.2.224
+
+# Step 3: Configure DataSource
+# =============================
+# Copy datasource.cfg to $KARAF_HOME/etc/org.ops4j.datasource-AppDataSource.cfg
+# This creates a DataSource service in OSGi registry
+
+# Verify DataSource is registered:
+jdbc:ds-list
+
+# Expected output:
+# Name          | Product | Version
+# AppDataSource | H2      | 2.2.224
+
+# Step 4: Configure Spring Boot Application (Optional)
+# =====================================================
+# Copy springboot.cfg to $KARAF_HOME/etc/com.example.springboot.cfg
+# This allows runtime configuration of server port, profiles, etc.
+
+# Step 5: Deploy the OSGi Lifecycle Wrapper Bundle
+# =================================================
+# Option A: From Maven repository
+bundle:install -s mvn:com.example/osgi-lifecycle-wrapper/1.0.0-SNAPSHOT
+
+# Option B: From file system
+bundle:install -s file:///path/to/osgi-lifecycle-wrapper-1.0.0-SNAPSHOT.jar
+
+# Step 6: Verify Deployment
+# ==========================
+bundle:list | grep osgi-lifecycle
+# Should show: Active osgi-lifecycle-wrapper
+
+# Check SCR components
+scr:list
+# Should show: [active] spring-boot-jdbc-app
+
+# Step 7: Access the Application
+# ===============================
+# Spring Boot runs on its OWN port (not Karaf's 8181)
+# Default: http://localhost:8090/api/products
+
+# Alternative URLs:
+# http://localhost:8090/api/products/health
+# http://localhost:8090/api/info
+
+# Step 8: Monitor Logs
+# ====================
+log:tail
+# Watch for: "Spring Boot Application STARTED"
+
+# Useful Commands
+# ===============
+bundle:info <id>              # Show bundle details
+scr:info spring-boot-jdbc-app # Show SCR component details
+config:list "(service.pid=com.example.springboot)"  # Show configuration
+jdbc:ds-info AppDataSource    # Show DataSource info
+
+# Lifecycle Management
+# ====================
+bundle:stop <id>              # Stops Spring Boot application (calls deactivate)
+bundle:start <id>             # Starts Spring Boot application (calls activate)
+bundle:restart <id>           # Restarts the application
+bundle:uninstall <id>         # Removes the bundle
+
+# Configuration Updates
+# =====================
+# Edit $KARAF_HOME/etc/com.example.springboot.cfg
+# ConfigAdmin will notify the component of changes
+config:edit com.example.springboot
+config:property-set server.port 9090
+config:update
+
+# Port Configuration
+# ==================
+# Spring Boot: 8090 (configurable)
+# Karaf HTTP: 8181 (PAX Web, not used by this app)
+# Karaf RMI: 1099
+# Karaf SSH: 8101
+
+# Proxy Configuration (Optional)
+# ===============================
+# If you want to proxy requests from Karaf's port to Spring Boot:
+# Use Karaf's HTTP Proxy (pax-web-extender-whiteboard)
+# Or configure external reverse proxy (nginx, Apache)
+
+# Troubleshooting
+# ===============
+diag <bundle-id>              # Diagnose bundle issues
+scr:info spring-boot-jdbc-app # Check component state
+package:imports <id>          # Show package imports
+log:tail                      # View logs
+
+# Common Issues:
+# 1. "DataSource not found" - Ensure DataSource config is in etc/ directory
+# 2. "Component not satisfied" - Check scr:info for missing references
+# 3. "Port already in use" - Change server.port in springboot.cfg

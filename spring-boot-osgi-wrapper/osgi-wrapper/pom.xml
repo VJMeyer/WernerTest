@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>spring-boot-osgi-wrapper</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>osgi-lifecycle-wrapper</artifactId>
+    <packaging>bundle</packaging>
+
+    <name>OSGi Lifecycle Wrapper</name>
+    <description>
+        OSGi bundle that manages Spring Boot application lifecycle.
+        Uses Declarative Services for activate/deactivate callbacks
+        and injects DataSource from OSGi service registry.
+    </description>
+
+    <dependencies>
+        <!-- Spring Boot Application -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>spring-boot-jdbc-app</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- OSGi Core APIs -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.core</artifactId>
+            <version>${osgi.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- OSGi Compendium (for Declarative Services annotations) -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.cmpn</artifactId>
+            <version>${osgi.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- OSGi Annotations -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.component.annotations</artifactId>
+            <version>1.5.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- SLF4J for logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Apache Felix Bundle Plugin -->
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>5.1.9</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
+                        <Bundle-Version>${project.version}</Bundle-Version>
+                        <Bundle-Name>${project.name}</Bundle-Name>
+                        <Bundle-Description>${project.description}</Bundle-Description>
+
+                        <!-- Import OSGi packages -->
+                        <Import-Package>
+                            org.osgi.framework;version="[1.8,2)",
+                            org.osgi.service.component;version="[1.4,2)",
+                            org.osgi.service.component.annotations;version="[1.4,2)";resolution:=optional,
+                            javax.sql,
+                            org.slf4j;version="[1.7,3)",
+                            *;resolution:=optional
+                        </Import-Package>
+
+                        <!-- Export the wrapper service -->
+                        <Export-Package>
+                            com.example.osgi
+                        </Export-Package>
+
+                        <!-- Embed the Spring Boot application JAR -->
+                        <Embed-Dependency>
+                            spring-boot-jdbc-app;scope=compile|runtime;inline=false
+                        </Embed-Dependency>
+                        <Embed-Transitive>true</Embed-Transitive>
+                        <Embed-Directory>lib</Embed-Directory>
+
+                        <!-- Bundle ClassPath includes embedded JARs -->
+                        <Bundle-ClassPath>
+                            .,
+                            lib/spring-boot-jdbc-app-${project.version}.jar
+                        </Bundle-ClassPath>
+
+                        <!-- Enable Declarative Services -->
+                        <_dsannotations>*</_dsannotations>
+                        <_metatypeannotations>*</_metatypeannotations>
+
+                    </instructions>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: spring-boot-jdbc-app
+
+  # Default standalone configuration
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+app:
+  datasource:
+    external: false
+
+logging:
+  level:
+    root: INFO
+    com.example.app: DEBUG
+
+---
+# Profile for OSGi/Karaf deployment
+spring:
+  config:
+    activate:
+      on-profile: osgi
+
+app:
+  datasource:
+    external: true
+
+server:
+  port: 8090
+
+logging:
+  level:
+    com.example.app: INFO
