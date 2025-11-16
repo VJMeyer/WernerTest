@@ -6,6 +6,7 @@ import com.example.exporter.model.LookupDefinition;
 import com.example.exporter.service.StreamingExportService;
 import com.example.exporter.writer.CsvStreamingWriter;
 import com.example.exporter.writer.JsonStreamingWriter;
+import com.example.exporter.writer.ParquetStreamingWriter;
 import com.example.exporter.writer.StreamingWriter;
 import com.fasterxml.jackson.core.JsonFactory;
 import jakarta.annotation.PostConstruct;
@@ -24,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * REST controller for data export operations.
  *
- * Supports streaming export in JSON and CSV formats based on the Accept header.
+ * Supports streaming export in JSON, CSV, and Parquet formats based on the Accept header.
  * Uses Spring's StreamingResponseBody for true streaming without buffering.
  */
 @RestController
@@ -162,16 +163,29 @@ public class ExportController {
         }
 
         // Determine output format from Accept header
-        boolean isCsv = acceptHeader.contains("text/csv") ||
-                acceptHeader.contains("application/csv");
+        StreamingWriter writer;
+        String fileExtension;
+        String formatName;
 
-        StreamingWriter writer = isCsv
-                ? new CsvStreamingWriter()
-                : new JsonStreamingWriter(jsonFactory);
+        if (acceptHeader.contains("application/vnd.apache.parquet") ||
+                acceptHeader.contains("application/parquet")) {
+            writer = new ParquetStreamingWriter();
+            fileExtension = ".parquet";
+            formatName = "Parquet";
+        } else if (acceptHeader.contains("text/csv") ||
+                acceptHeader.contains("application/csv")) {
+            writer = new CsvStreamingWriter();
+            fileExtension = ".csv";
+            formatName = "CSV";
+        } else {
+            writer = new JsonStreamingWriter(jsonFactory);
+            fileExtension = ".json";
+            formatName = "JSON";
+        }
 
         String contentType = writer.getContentType();
 
-        log.info("Starting export '{}' in {} format", name, isCsv ? "CSV" : "JSON");
+        log.info("Starting export '{}' in {} format", name, formatName);
 
         StreamingResponseBody responseBody = outputStream -> {
             try {
@@ -186,7 +200,7 @@ public class ExportController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, contentType)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + name + (isCsv ? ".csv" : ".json") + "\"")
+                        "attachment; filename=\"" + name + fileExtension + "\"")
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
                 .header(HttpHeaders.PRAGMA, "no-cache")
                 .header(HttpHeaders.EXPIRES, "0")
@@ -215,16 +229,29 @@ public class ExportController {
             return ResponseEntity.badRequest().build();
         }
 
-        boolean isCsv = acceptHeader.contains("text/csv") ||
-                acceptHeader.contains("application/csv");
+        StreamingWriter writer;
+        String fileExtension;
+        String formatName;
 
-        StreamingWriter writer = isCsv
-                ? new CsvStreamingWriter()
-                : new JsonStreamingWriter(jsonFactory);
+        if (acceptHeader.contains("application/vnd.apache.parquet") ||
+                acceptHeader.contains("application/parquet")) {
+            writer = new ParquetStreamingWriter();
+            fileExtension = ".parquet";
+            formatName = "Parquet";
+        } else if (acceptHeader.contains("text/csv") ||
+                acceptHeader.contains("application/csv")) {
+            writer = new CsvStreamingWriter();
+            fileExtension = ".csv";
+            formatName = "CSV";
+        } else {
+            writer = new JsonStreamingWriter(jsonFactory);
+            fileExtension = ".json";
+            formatName = "JSON";
+        }
 
         String contentType = writer.getContentType();
 
-        log.info("Starting custom export in {} format", isCsv ? "CSV" : "JSON");
+        log.info("Starting custom export in {} format", formatName);
 
         StreamingResponseBody responseBody = outputStream -> {
             try {
@@ -239,7 +266,7 @@ public class ExportController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, contentType)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"export" + (isCsv ? ".csv" : ".json") + "\"")
+                        "attachment; filename=\"export" + fileExtension + "\"")
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
                 .header("X-Accel-Buffering", "no")
                 .body(responseBody);
