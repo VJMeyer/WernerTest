@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: upload-service
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+  # Redis Configuration (distributed state store)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 60000
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 2
+
+  # RabbitMQ Configuration (message persistence)
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: /
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# Custom application properties
+upload:
+  # Base path for file storage (NFS mount point)
+  storage-path: ${UPLOAD_STORAGE_PATH:/mnt/nfs/uploads}
+  # TTL for completed upload status (24 hours in seconds)
+  status-ttl-seconds: 86400
+  # Base URL for monitoring endpoints
+  base-url: ${UPLOAD_BASE_URL:http://localhost:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
