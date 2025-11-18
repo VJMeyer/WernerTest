@@ -1,7 +1,7 @@
 # Multi-stage build for Upload Service
 
 # Stage 1: Build the application
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 
 # Copy parent pom and module poms
@@ -20,7 +20,7 @@ COPY upload-service/src upload-service/src
 RUN mvn clean package -DskipTests -pl upload-service -am
 
 # Stage 2: Create the runtime image
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Create upload directory
@@ -32,7 +32,7 @@ COPY --from=build /build/upload-service/target/*.jar app.jar
 # Expose application port
 EXPOSE 8080
 
-# Set JVM options for containerized environment
+# Set JVM options for containerized environment (Java 21 with Virtual Threads)
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
 # Run the application

@@ -20,6 +20,7 @@ User → Upload Service → File Storage → RabbitMQ → Batch Processor → wi
 ## Features
 
 - **Multi-module Maven project structure**
+- **Java 21 with Virtual Threads** for improved scalability and performance
 - **File upload with metadata tracking** (filename, size, checksum)
 - **Asynchronous message processing** via RabbitMQ
 - **Automatic batch file generation** for wiskBat processing
@@ -67,7 +68,7 @@ User → Upload Service → File Storage → RabbitMQ → Batch Processor → wi
 ## Prerequisites
 
 - Docker and Docker Compose installed
-- Java 17 (for local development)
+- Java 21 (for local development)
 - Maven 3.6+ (for local development)
 
 ## Quick Start
@@ -187,6 +188,52 @@ The generated batch file includes:
 - Batch directory: `/app/batch`
 - wiskBat executable: `wiskBat.exe`
 - wiskBat enabled: `false` (set to `true` in production)
+
+## Java 21 Virtual Threads
+
+This application is built with **Java 21** and leverages **Virtual Threads** (Project Loom) for improved concurrency and scalability.
+
+### What are Virtual Threads?
+
+Virtual Threads are lightweight threads introduced in Java 21 that dramatically reduce the overhead of thread creation and context switching. Unlike traditional platform threads, virtual threads are managed by the JVM rather than the operating system, allowing applications to create millions of threads with minimal resource consumption.
+
+### Benefits in this Application
+
+**Upload Service:**
+- Each HTTP request is handled on a virtual thread
+- File uploads (especially large files) can be processed concurrently without blocking platform threads
+- Improved throughput for concurrent file uploads
+- Reduced memory footprint compared to traditional thread-per-request model
+
+**Batch Processor:**
+- RabbitMQ message listeners run on virtual threads
+- File processing operations (reading, batch file generation, wiskBat execution) don't block platform threads
+- Better resource utilization when processing multiple messages concurrently
+
+### Configuration
+
+Virtual threads are enabled via Spring Boot configuration:
+
+```properties
+spring.threads.virtual.enabled=true
+```
+
+This single property configures Spring Boot to use virtual threads for:
+- Web request handling (Tomcat/Jetty)
+- `@Async` methods
+- `@Scheduled` tasks
+- Task executors
+
+### Performance Characteristics
+
+- **Lightweight**: Each virtual thread uses only a few KB of memory (vs. ~1MB for platform threads)
+- **Scalable**: Can create millions of virtual threads without exhausting system resources
+- **No code changes**: Existing blocking code works seamlessly with virtual threads
+- **Simplified concurrency**: No need for complex async/reactive patterns for I/O-bound operations
+
+### Monitoring
+
+To verify virtual threads are in use, check the application logs or use JVM monitoring tools. Virtual threads appear as `VirtualThread[#...]` in thread dumps.
 
 ## Testing the System
 
@@ -374,12 +421,12 @@ docker logs rabbitmq -f
 
 ## Technologies Used
 
-- **Spring Boot 3.2.0**
+- **Spring Boot 3.2.0** with Virtual Threads support
+- **Java 21** with Virtual Threads enabled
 - **Spring AMQP** (RabbitMQ integration)
 - **RabbitMQ 3.12** (with Management Plugin)
 - **Docker** and **Docker Compose**
 - **Maven** (multi-module build)
-- **Java 17**
 
 ## Development Notes
 
