@@ -23,8 +23,8 @@ RUN mvn clean package -DskipTests -pl upload-service -am
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Create upload directory
-RUN mkdir -p /app/uploads
+# Create upload directories
+RUN mkdir -p /app/uploads /app/tus-uploads
 
 # Copy the JAR from build stage
 COPY --from=build /build/upload-service/target/*.jar app.jar

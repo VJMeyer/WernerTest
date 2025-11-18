@@ -21,6 +21,7 @@ User → Upload Service → File Storage → RabbitMQ → Batch Processor → wi
 
 - **Multi-module Maven project structure**
 - **Java 21 with Virtual Threads** for improved scalability and performance
+- **TUS Protocol for resumable uploads** - recover from network interruptions
 - **File upload with metadata tracking** (filename, size, checksum)
 - **Asynchronous message processing** via RabbitMQ
 - **Automatic batch file generation** for wiskBat processing
@@ -110,7 +111,9 @@ User → Upload Service → File Storage → RabbitMQ → Batch Processor → wi
 
 ## API Usage
 
-### Upload a File
+### Simple Upload
+
+For basic, small file uploads:
 
 ```bash
 curl -X POST http://localhost:8080/api/upload \
@@ -126,6 +129,130 @@ Response:
   "size": 1024,
   "path": "/app/uploads/abc123-def456.csv"
 }
+```
+
+### Resumable Upload (TUS Protocol)
+
+For large files or unreliable networks, use the **TUS protocol** for resumable uploads.
+
+#### What is TUS?
+
+TUS is an open protocol for resumable file uploads based on HTTP. It allows:
+- **Resume interrupted uploads** from the last successful byte
+- **Handle large files** efficiently with chunked uploads
+- **Network resilience** - automatic retry on connection failures
+- **Upload progress tracking** via standard HTTP headers
+
+#### TUS Endpoints
+
+**Base URL:** `http://localhost:8080/api/tus/upload`
+
+**Supported Methods:**
+- `POST` - Create new upload
+- `PATCH` - Upload file chunks
+- `HEAD` - Check upload status
+- `DELETE` - Cancel upload
+
+#### Create Upload
+
+```bash
+curl -X POST http://localhost:8080/api/tus/upload \
+  -H "Tus-Resumable: 1.0.0" \
+  -H "Upload-Length: 1048576" \
+  -H "Upload-Metadata: filename dGVzdC5jc3Y=,filetype dGV4dC9jc3Y=" \
+  -i
+```
+
+Response headers include:
+- `Location: /api/tus/upload/{upload-id}`
+- `Tus-Resumable: 1.0.0`
+
+#### Upload Data
+
+```bash
+curl -X PATCH http://localhost:8080/api/tus/upload/{upload-id} \
+  -H "Tus-Resumable: 1.0.0" \
+  -H "Upload-Offset: 0" \
+  -H "Content-Type: application/offset+octet-stream" \
+  --data-binary @file.csv \
+  -i
+```
+
+Headers:
+- `Upload-Offset`: Byte position to resume from (0 for new upload)
+- Response includes `Upload-Offset` with bytes received
+
+#### Check Status
+
+```bash
+curl -X HEAD http://localhost:8080/api/tus/upload/{upload-id} \
+  -H "Tus-Resumable: 1.0.0" \
+  -i
+```
+
+Response headers:
+- `Upload-Offset`: Bytes successfully uploaded
+- `Upload-Length`: Total file size
+
+#### Using TUS Client Libraries
+
+For production use, leverage official TUS client libraries:
+
+**JavaScript (Browser/Node.js):**
+```javascript
+import * as tus from "tus-js-client";
+
+const file = document.querySelector('input[type="file"]').files[0];
+const upload = new tus.Upload(file, {
+  endpoint: "http://localhost:8080/api/tus/upload",
+  retryDelays: [0, 3000, 5000, 10000, 20000],
+  metadata: {
+    filename: file.name,
+    filetype: file.type
+  },
+  onError: (error) => console.error("Upload failed:", error),
+  onProgress: (bytesUploaded, bytesTotal) => {
+    const percentage = (bytesUploaded / bytesTotal * 100).toFixed(2);
+    console.log(`Progress: ${percentage}%`);
+  },
+  onSuccess: () => console.log("Upload complete!")
+});
+
+upload.start();
+```
+
+**Python:**
+```python
+from tusclient import client
+
+my_client = client.TusClient('http://localhost:8080/api/tus/upload')
+uploader = my_client.uploader('path/to/file.csv', chunk_size=5242880)
+uploader.upload()
+```
+
+**Java:**
+```java
+TusClient client = new TusClient();
+client.setUploadCreationURL(new URL("http://localhost:8080/api/tus/upload"));
+TusUploader uploader = client.createUpload(file);
+uploader.upload();
+```
+
+#### TUS Features Supported
+
+- ✅ **Creation** - POST to create upload
+- ✅ **Core** - PATCH to upload data
+- ✅ **Termination** - DELETE to cancel
+- ✅ **Checksum** - Upload-Checksum validation
+- ✅ **Expiration** - Automatic cleanup after 24 hours
+
+#### TUS Configuration
+
+Edit `upload-service/src/main/resources/application.properties`:
+```properties
+tus.upload.directory=/app/tus-uploads
+tus.upload.expiration.period=86400000  # 24 hours
+tus.max.upload.size=104857600          # 100MB
 ```
 
 ### Health Check
