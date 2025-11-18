@@ -39,12 +39,78 @@
                         <div class="grid-header">
                             <h2 id="gridTitle">Select an entity set</h2>
                             <div class="grid-controls">
+                                <button id="showFiltersBtn" class="show-filters-btn" disabled>🔍 Filters</button>
                                 <button id="refreshBtn" disabled>Refresh</button>
                                 <span id="recordCount"></span>
                             </div>
                         </div>
+
+                        <!-- Filter Panel -->
+                        <div id="filterPanel" class="filter-panel hidden">
+                            <div class="filter-header">
+                                <h3>Filters</h3>
+                                <button id="toggleFilterBtn" class="toggle-filter-btn">Hide Filters</button>
+                            </div>
+                            <div class="filter-controls">
+                                <div class="filter-row">
+                                    <select id="filterProperty" class="filter-select">
+                                        <option value="">Select property...</option>
+                                    </select>
+                                    <select id="filterOperator" class="filter-select">
+                                        <option value="eq">Equals</option>
+                                        <option value="ne">Not Equals</option>
+                                        <option value="gt">Greater Than</option>
+                                        <option value="ge">Greater or Equal</option>
+                                        <option value="lt">Less Than</option>
+                                        <option value="le">Less or Equal</option>
+                                        <option value="contains">Contains</option>
+                                        <option value="startswith">Starts With</option>
+                                        <option value="endswith">Ends With</option>
+                                    </select>
+                                    <input type="text" id="filterValue" class="filter-input" placeholder="Filter value..." />
+                                    <button id="applyFilterBtn" class="apply-filter-btn">Apply</button>
+                                    <button id="clearFilterBtn" class="clear-filter-btn">Clear</button>
+                                </div>
+                                <div id="activeFilters" class="active-filters"></div>
+                            </div>
+                        </div>
+
+                        <!-- Pagination Controls (Top) -->
+                        <div id="paginationTop" class="pagination-container hidden">
+                            <div class="pagination-info">
+                                <span id="pageInfo">Page 1 of 1</span>
+                                <select id="pageSizeSelect" class="page-size-select">
+                                    <option value="10">10 per page</option>
+                                    <option value="25" selected>25 per page</option>
+                                    <option value="50">50 per page</option>
+                                    <option value="100">100 per page</option>
+                                </select>
+                            </div>
+                            <div class="pagination-controls">
+                                <button id="firstPageBtn" class="page-btn" disabled>⏮ First</button>
+                                <button id="prevPageBtn" class="page-btn" disabled>← Previous</button>
+                                <div id="pageNumbers" class="page-numbers"></div>
+                                <button id="nextPageBtn" class="page-btn" disabled>Next →</button>
+                                <button id="lastPageBtn" class="page-btn" disabled>Last ⏭</button>
+                            </div>
+                        </div>
+
                         <div id="gridContainer" class="grid-container">
                             <p class="placeholder">Select an entity set from the tree to view data</p>
+                        </div>
+
+                        <!-- Pagination Controls (Bottom) -->
+                        <div id="paginationBottom" class="pagination-container hidden">
+                            <div class="pagination-info">
+                                <span id="pageInfoBottom">Page 1 of 1</span>
+                            </div>
+                            <div class="pagination-controls">
+                                <button id="firstPageBtnBottom" class="page-btn" disabled>⏮ First</button>
+                                <button id="prevPageBtnBottom" class="page-btn" disabled>← Previous</button>
+                                <div id="pageNumbersBottom" class="page-numbers"></div>
+                                <button id="nextPageBtnBottom" class="page-btn" disabled>Next →</button>
+                                <button id="lastPageBtnBottom" class="page-btn" disabled>Last ⏭</button>
+                            </div>
                         </div>
                     </div>
 

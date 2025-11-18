@@ -6,7 +6,13 @@ A dynamic JavaScript application for exploring and visualizing OData services. T
 
 - **Automatic Metadata Discovery**: Reads and parses the `$metadata` endpoint to understand the service structure
 - **Entity Set Tree**: Displays all available entity sets in an organized tree view
-- **Dynamic Grid View**: Shows the first 25 entries of any selected entity set in a sortable table
+- **Dynamic Grid View**: Shows entities in a data table with pagination support
+- **Pagination**: Navigate through large datasets with configurable page sizes (10, 25, 50, 100 records per page)
+- **Advanced Filtering**: Filter data by any property with multiple operators:
+  - Equals, Not Equals
+  - Greater Than, Greater or Equal, Less Than, Less or Equal
+  - Contains, Starts With, Ends With
+  - Multiple filters can be applied simultaneously
 - **Detail Forms**: Automatically generates forms based on metadata with appropriate input types:
   - Text inputs for strings
   - Number inputs for numeric types
@@ -40,15 +46,26 @@ A dynamic JavaScript application for exploring and visualizing OData services. T
    - Click on any entity set to view its data
 
 4. **View Data**:
-   - The grid view shows the first 25 records
+   - The grid view shows records with pagination controls
+   - Use page size selector to choose how many records to display (10, 25, 50, or 100)
+   - Navigate between pages using First, Previous, Next, Last buttons or click specific page numbers
    - Click any row to see detailed information
 
-5. **Explore Details**:
+5. **Filter Data**:
+   - Click the "🔍 Filters" button to show the filter panel
+   - Select a property from the dropdown (automatically populated based on entity metadata)
+   - Choose a filter operator (equals, contains, greater than, etc.)
+   - Enter a filter value and click "Apply"
+   - Multiple filters can be active simultaneously
+   - Active filters are displayed as badges that can be individually removed
+   - Click "Clear" to remove all filters
+
+6. **Explore Details**:
    - The detail view shows all properties in an appropriate form format
    - Key fields are marked with 🔑
    - Required fields are marked with *
 
-6. **Navigate Relationships**:
+7. **Navigate Relationships**:
    - Click "View Collection" or "View Related Entity" buttons for navigation properties
    - Use the "Back" button to return to previous views
 
@@ -125,7 +142,9 @@ The application uses modern JavaScript features and is compatible with:
 
 ### Performance
 
-- Fetches 25 records at a time for grid views
+- Configurable page sizes (10, 25, 50, 100 records per page) for optimal data loading
+- Uses server-side pagination with OData `$top` and `$skip` parameters
+- Applies filters on the server side using OData `$filter` expressions
 - Uses `$count` to show total available records
 - Lazy loads navigation properties only when requested
 - Caches metadata after initial load
@@ -159,25 +178,14 @@ To make fields editable:
 2. Add save button and implement PUT/PATCH requests
 3. Handle validation based on metadata constraints
 
-#### Adding Filter/Search
+#### Adding Sorting
 
-Extend `fetchEntitySet()` to accept filter parameters:
+Modify the grid headers to add sorting functionality:
 
 ```javascript
 const result = await this.odataService.fetchEntitySet(entitySetName, {
-    top: 25,
-    filter: "Name eq 'John'"
-});
-```
-
-#### Adding Pagination
-
-Modify `loadEntitySet()` to track skip/top and add pagination controls:
-
-```javascript
-await this.odataService.fetchEntitySet(entitySetName, {
-    top: 25,
-    skip: currentPage * 25
+    top: this.pageSize,
+    orderby: "PropertyName asc"
 });
 ```
 
@@ -186,7 +194,6 @@ await this.odataService.fetchEntitySet(entitySetName, {
 - Read-only: No create, update, or delete operations
 - Basic type support: Complex types and enums require additional handling
 - No authentication: Works only with public services or pre-authenticated sessions
-- Grid shows maximum 25 records (can be modified in code)
 - Requires CORS-enabled services
 
 ## Troubleshooting
@@ -214,9 +221,12 @@ This is a demonstration application. Feel free to use and modify for your needs.
 Suggestions and improvements are welcome. Some ideas for enhancement:
 
 - Add export to CSV/Excel functionality
-- Implement client-side filtering and sorting
+- Implement column sorting (click headers to sort)
 - Add support for function imports and actions
 - Create a favorites/bookmarks system for services
 - Add dark mode theme
 - Support for batch operations
-- Implement caching for better performance
+- Add save/export filter configurations
+- Implement advanced filter builder with AND/OR logic
+- Add data visualization (charts/graphs)
+- Support for editing and creating entities

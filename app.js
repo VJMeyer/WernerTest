@@ -10,6 +10,15 @@ class ODataExplorer {
         this.currentEntity = null;
         this.navigationStack = [];
 
+        // Pagination state
+        this.currentPage = 1;
+        this.pageSize = 25;
+        this.totalCount = 0;
+        this.totalPages = 0;
+
+        // Filter state
+        this.activeFilters = [];
+
         this.initializeEventListeners();
     }
 
@@ -47,6 +56,72 @@ class ODataExplorer {
         document.getElementById('backBtn').addEventListener('click', () => {
             this.navigateBack();
         });
+
+        // Filter controls
+        document.getElementById('showFiltersBtn').addEventListener('click', () => {
+            this.toggleFilterPanel();
+        });
+
+        document.getElementById('toggleFilterBtn').addEventListener('click', () => {
+            this.toggleFilterPanel();
+        });
+
+        document.getElementById('applyFilterBtn').addEventListener('click', () => {
+            this.applyFilter();
+        });
+
+        document.getElementById('clearFilterBtn').addEventListener('click', () => {
+            this.clearFilters();
+        });
+
+        document.getElementById('filterValue').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.applyFilter();
+            }
+        });
+
+        // Pagination controls - Top
+        document.getElementById('firstPageBtn').addEventListener('click', () => {
+            this.goToPage(1);
+        });
+
+        document.getElementById('prevPageBtn').addEventListener('click', () => {
+            this.goToPage(this.currentPage - 1);
+        });
+
+        document.getElementById('nextPageBtn').addEventListener('click', () => {
+            this.goToPage(this.currentPage + 1);
+        });
+
+        document.getElementById('lastPageBtn').addEventListener('click', () => {
+            this.goToPage(this.totalPages);
+        });
+
+        // Pagination controls - Bottom
+        document.getElementById('firstPageBtnBottom').addEventListener('click', () => {
+            this.goToPage(1);
+        });
+
+        document.getElementById('prevPageBtnBottom').addEventListener('click', () => {
+            this.goToPage(this.currentPage - 1);
+        });
+
+        document.getElementById('nextPageBtnBottom').addEventListener('click', () => {
+            this.goToPage(this.currentPage + 1);
+        });
+
+        document.getElementById('lastPageBtnBottom').addEventListener('click', () => {
+            this.goToPage(this.totalPages);
+        });
+
+        // Page size selector
+        document.getElementById('pageSizeSelect').addEventListener('change', (e) => {
+            this.pageSize = parseInt(e.target.value);
+            this.currentPage = 1;
+            if (this.currentEntitySet) {
+                this.loadEntitySet(this.currentEntitySet);
+            }
+        });
     }
 
     /**
@@ -69,8 +144,9 @@ class ODataExplorer {
             this.showConnectionStatus('Connected', true);
             this.buildEntityTree(metadata.entitySets);
 
-            // Enable refresh button
+            // Enable buttons
             document.getElementById('refreshBtn').disabled = false;
+            document.getElementById('showFiltersBtn').disabled = false;
         } catch (error) {
             this.showConnectionStatus(`Error: ${error.message}`, false);
             console.error('Connection error:', error);
@@ -121,8 +197,21 @@ class ODataExplorer {
         this.showLoading(true);
 
         try {
-            const result = await this.odataService.fetchEntitySet(entitySetName, { top: 25 });
+            // Build filter expression
+            const filter = this.buildFilterExpression();
+
+            // Calculate skip
+            const skip = (this.currentPage - 1) * this.pageSize;
+
+            const result = await this.odataService.fetchEntitySet(entitySetName, {
+                top: this.pageSize,
+                skip: skip,
+                filter: filter
+            });
+
             this.currentEntitySet = entitySetName;
+            this.totalCount = result.count;
+            this.totalPages = Math.ceil(this.totalCount / this.pageSize);
 
             // Update grid title
             document.getElementById('gridTitle').textContent = entitySetName;
@@ -130,6 +219,12 @@ class ODataExplorer {
 
             // Build grid
             this.buildGrid(result.value, entitySetName);
+
+            // Update filter property dropdown
+            this.buildFilterPropertyDropdown(entitySetName);
+
+            // Update pagination controls
+            this.updatePaginationControls();
 
             // Switch to grid tab
             this.switchTab('grid');
@@ -677,6 +772,313 @@ class ODataExplorer {
     showError(title, error) {
         alert(`${title}\n\n${error.message}`);
         console.error(title, error);
+    }
+
+    /**
+     * Toggle filter panel visibility
+     */
+    toggleFilterPanel() {
+        const filterPanel = document.getElementById('filterPanel');
+        const toggleBtn = document.getElementById('toggleFilterBtn');
+
+        if (filterPanel.classList.contains('hidden')) {
+            filterPanel.classList.remove('hidden');
+            toggleBtn.textContent = 'Hide Filters';
+        } else {
+            filterPanel.classList.add('hidden');
+            toggleBtn.textContent = 'Show Filters';
+        }
+    }
+
+    /**
+     * Build filter property dropdown
+     */
+    buildFilterPropertyDropdown(entitySetName) {
+        const entitySet = this.odataService.getEntitySet(entitySetName);
+        const entityTypeInfo = entitySet?.entityTypeInfo;
+
+        if (!entityTypeInfo) return;
+
+        const propertySelect = document.getElementById('filterProperty');
+        propertySelect.innerHTML = '<option value="">Select property...</option>';
+
+        entityTypeInfo.properties.forEach(prop => {
+            const option = document.createElement('option');
+            option.value = prop.name;
+            option.textContent = `${prop.name} (${prop.type})`;
+            option.dataset.type = prop.type;
+            propertySelect.appendChild(option);
+        });
+    }
+
+    /**
+     * Apply filter
+     */
+    applyFilter() {
+        const property = document.getElementById('filterProperty').value;
+        const operator = document.getElementById('filterOperator').value;
+        const value = document.getElementById('filterValue').value;
+
+        if (!property || !value) {
+            alert('Please select a property and enter a value');
+            return;
+        }
+
+        // Get property type
+        const propertyOption = document.querySelector(`#filterProperty option[value="${property}"]`);
+        const propertyType = propertyOption?.dataset.type || 'Edm.String';
+
+        // Check if filter already exists for this property
+        const existingIndex = this.activeFilters.findIndex(f => f.property === property && f.operator === operator);
+        if (existingIndex >= 0) {
+            this.activeFilters[existingIndex].value = value;
+        } else {
+            this.activeFilters.push({ property, operator, value, propertyType });
+        }
+
+        // Reset to first page
+        this.currentPage = 1;
+
+        // Reload data
+        if (this.currentEntitySet) {
+            this.loadEntitySet(this.currentEntitySet);
+        }
+
+        // Clear input
+        document.getElementById('filterValue').value = '';
+
+        // Update active filters display
+        this.displayActiveFilters();
+    }
+
+    /**
+     * Clear all filters
+     */
+    clearFilters() {
+        this.activeFilters = [];
+        this.currentPage = 1;
+
+        if (this.currentEntitySet) {
+            this.loadEntitySet(this.currentEntitySet);
+        }
+
+        document.getElementById('filterProperty').value = '';
+        document.getElementById('filterValue').value = '';
+
+        this.displayActiveFilters();
+    }
+
+    /**
+     * Remove a specific filter
+     */
+    removeFilter(index) {
+        this.activeFilters.splice(index, 1);
+        this.currentPage = 1;
+
+        if (this.currentEntitySet) {
+            this.loadEntitySet(this.currentEntitySet);
+        }
+
+        this.displayActiveFilters();
+    }
+
+    /**
+     * Display active filters
+     */
+    displayActiveFilters() {
+        const container = document.getElementById('activeFilters');
+        container.innerHTML = '';
+
+        if (this.activeFilters.length === 0) {
+            return;
+        }
+
+        this.activeFilters.forEach((filter, index) => {
+            const badge = document.createElement('div');
+            badge.className = 'filter-badge';
+
+            const operatorText = this.getOperatorText(filter.operator);
+            badge.innerHTML = `
+                <span>${filter.property} ${operatorText} "${filter.value}"</span>
+                <button onclick="app.removeFilter(${index})">×</button>
+            `;
+
+            container.appendChild(badge);
+        });
+    }
+
+    /**
+     * Get human-readable operator text
+     */
+    getOperatorText(operator) {
+        const operators = {
+            'eq': '=',
+            'ne': '≠',
+            'gt': '>',
+            'ge': '≥',
+            'lt': '<',
+            'le': '≤',
+            'contains': 'contains',
+            'startswith': 'starts with',
+            'endswith': 'ends with'
+        };
+        return operators[operator] || operator;
+    }
+
+    /**
+     * Build OData filter expression
+     */
+    buildFilterExpression() {
+        if (this.activeFilters.length === 0) {
+            return null;
+        }
+
+        const filterExpressions = this.activeFilters.map(filter => {
+            const isString = filter.propertyType.includes('String');
+            let expression;
+
+            if (filter.operator === 'contains' || filter.operator === 'startswith' || filter.operator === 'endswith') {
+                // Function-based operators
+                expression = `${filter.operator}(${filter.property}, '${filter.value}')`;
+            } else {
+                // Comparison operators
+                const formattedValue = isString ? `'${filter.value}'` : filter.value;
+                expression = `${filter.property} ${filter.operator} ${formattedValue}`;
+            }
+
+            return expression;
+        });
+
+        return filterExpressions.join(' and ');
+    }
+
+    /**
+     * Go to specific page
+     */
+    goToPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) {
+            return;
+        }
+
+        this.currentPage = page;
+
+        if (this.currentEntitySet) {
+            this.loadEntitySet(this.currentEntitySet);
+        }
+    }
+
+    /**
+     * Update pagination controls
+     */
+    updatePaginationControls() {
+        // Show pagination containers
+        document.getElementById('paginationTop').classList.remove('hidden');
+        document.getElementById('paginationBottom').classList.remove('hidden');
+
+        // Update page info
+        const pageInfo = `Page ${this.currentPage} of ${this.totalPages}`;
+        document.getElementById('pageInfo').textContent = pageInfo;
+        document.getElementById('pageInfoBottom').textContent = pageInfo;
+
+        // Update buttons state
+        const isFirstPage = this.currentPage === 1;
+        const isLastPage = this.currentPage === this.totalPages;
+
+        // Top pagination buttons
+        document.getElementById('firstPageBtn').disabled = isFirstPage;
+        document.getElementById('prevPageBtn').disabled = isFirstPage;
+        document.getElementById('nextPageBtn').disabled = isLastPage;
+        document.getElementById('lastPageBtn').disabled = isLastPage;
+
+        // Bottom pagination buttons
+        document.getElementById('firstPageBtnBottom').disabled = isFirstPage;
+        document.getElementById('prevPageBtnBottom').disabled = isFirstPage;
+        document.getElementById('nextPageBtnBottom').disabled = isLastPage;
+        document.getElementById('lastPageBtnBottom').disabled = isLastPage;
+
+        // Build page numbers
+        this.buildPageNumbers();
+    }
+
+    /**
+     * Build page number buttons
+     */
+    buildPageNumbers() {
+        const topContainer = document.getElementById('pageNumbers');
+        const bottomContainer = document.getElementById('pageNumbersBottom');
+
+        topContainer.innerHTML = '';
+        bottomContainer.innerHTML = '';
+
+        if (this.totalPages <= 1) {
+            return;
+        }
+
+        const maxPageButtons = 7;
+        let startPage = Math.max(1, this.currentPage - Math.floor(maxPageButtons / 2));
+        let endPage = Math.min(this.totalPages, startPage + maxPageButtons - 1);
+
+        // Adjust start if we're near the end
+        if (endPage - startPage < maxPageButtons - 1) {
+            startPage = Math.max(1, endPage - maxPageButtons + 1);
+        }
+
+        // Add first page and ellipsis if needed
+        if (startPage > 1) {
+            this.addPageButton(topContainer, 1);
+            this.addPageButton(bottomContainer, 1);
+
+            if (startPage > 2) {
+                this.addEllipsis(topContainer);
+                this.addEllipsis(bottomContainer);
+            }
+        }
+
+        // Add page buttons
+        for (let i = startPage; i <= endPage; i++) {
+            this.addPageButton(topContainer, i);
+            this.addPageButton(bottomContainer, i);
+        }
+
+        // Add last page and ellipsis if needed
+        if (endPage < this.totalPages) {
+            if (endPage < this.totalPages - 1) {
+                this.addEllipsis(topContainer);
+                this.addEllipsis(bottomContainer);
+            }
+
+            this.addPageButton(topContainer, this.totalPages);
+            this.addPageButton(bottomContainer, this.totalPages);
+        }
+    }
+
+    /**
+     * Add page number button
+     */
+    addPageButton(container, pageNum) {
+        const button = document.createElement('div');
+        button.className = 'page-number';
+        button.textContent = pageNum;
+
+        if (pageNum === this.currentPage) {
+            button.classList.add('active');
+        }
+
+        button.addEventListener('click', () => {
+            this.goToPage(pageNum);
+        });
+
+        container.appendChild(button);
+    }
+
+    /**
+     * Add ellipsis to page numbers
+     */
+    addEllipsis(container) {
+        const ellipsis = document.createElement('div');
+        ellipsis.className = 'page-number ellipsis';
+        ellipsis.textContent = '...';
+        container.appendChild(ellipsis);
     }
 }
 
