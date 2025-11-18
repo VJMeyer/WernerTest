@@ -41,10 +41,47 @@ Redis stores upload status that can be queried from any server:
 - Status (UPLOADING, PROCESSING, COMPLETED, FAILED)
 - Automatic TTL expiration (24 hours after completion)
 
-**Configuration:**
+**Development Configuration (Single Instance):**
 ```properties
 spring.data.redis.host=redis
 spring.data.redis.port=6379
+```
+
+**Production Configuration (Redis Sentinel HA):**
+```properties
+# Redis Sentinel provides automatic failover
+spring.data.redis.sentinel.master=mymaster
+spring.data.redis.sentinel.nodes=sentinel1:26379,sentinel2:26379,sentinel3:26379
+spring.data.redis.password=redis_password
+```
+
+**Redis HA Architecture Options:**
+
+1. **Development/Testing**: Single Redis instance (current docker-compose.yml)
+   - Simple setup
+   - AOF persistence for data durability
+   - **Limitation**: Single point of failure
+
+2. **Production**: Redis Sentinel (docker-compose.redis-ha.yml)
+   - 1 master + 2 replicas for redundancy
+   - 3 sentinels for automatic failover
+   - Quorum of 2 for master election
+   - If master fails, sentinel promotes a replica automatically
+   - No downtime during failover
+
+3. **Enterprise**: Redis Cluster or Managed Redis
+   - Use managed services (AWS ElastiCache, Azure Cache for Redis)
+   - Or self-hosted Redis Cluster for massive scale
+   - Horizontal scaling with data sharding
+
+**Starting with Redis HA:**
+```bash
+# Use Redis Sentinel configuration
+docker-compose -f docker-compose.redis-ha.yml up -d
+
+# Check Sentinel status
+docker exec redis-sentinel-1 redis-cli -p 26379 sentinel masters
+docker exec redis-sentinel-1 redis-cli -p 26379 sentinel replicas mymaster
 ```
 
 #### 2. RabbitMQ (Reliable Message Broker)
@@ -296,28 +333,36 @@ redis-cli -h redis.server TTL "UploadStatus:a1b2c3d4-e5f6-7890"
 
 ```
 .
-├── pom.xml                           # Parent POM
-├── docker-compose.yml                # Docker orchestration
+├── pom.xml                            # Parent POM
+├── docker-compose.yml                 # Docker orchestration (dev/test)
+├── docker-compose.redis-ha.yml        # Docker orchestration with Redis Sentinel HA
 │
-├── messaging/                        # Shared messaging module
+├── messaging/                         # Shared messaging module
 │   ├── pom.xml
 │   └── src/main/java/de/kisters/hmt/cloud/messaging/
 │       ├── config/
-│       │   └── RabbitMQConfig.java   # RabbitMQ configuration
+│       │   └── RabbitMQConfig.java    # RabbitMQ configuration
 │       └── dto/
 │           └── FileUploadMessage.java # Message DTO
 │
-├── upload-service/                   # File upload web service
+├── upload-service/                    # File upload web service
 │   ├── Dockerfile
 │   ├── pom.xml
 │   └── src/main/java/de/kisters/hmt/cloud/services/upload/
 │       ├── UploadServiceApplication.java
 │       ├── controller/
-│       │   └── FileUploadController.java
-│       └── service/
-│           └── FileUploadService.java
+│       │   ├── FileUploadController.java
+│       │   ├── TusUploadController.java
+│       │   └── UploadStatusController.java   # Status monitoring endpoint
+│       ├── service/
+│       │   ├── FileUploadService.java
+│       │   └── UploadStatusService.java      # Redis-based status tracking
+│       ├── model/
+│       │   └── UploadStatus.java             # Redis entity
+│       └── repository/
+│           └── UploadStatusRepository.java   # Redis repository
 │
-└── batch-processor/                  # Batch processing service
+└── batch-processor/                   # Batch processing service
     ├── Dockerfile
     ├── pom.xml
     └── src/main/java/de/kisters/hmt/cloud/connector/wiski/batch/
@@ -336,16 +381,26 @@ redis-cli -h redis.server TTL "UploadStatus:a1b2c3d4-e5f6-7890"
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Using Docker Compose (Development/Testing)
 
-1. **Start all services:**
-   ```bash
-   docker-compose up --build
-   ```
+**Option 1: Standard Setup (Single Redis)**
+```bash
+docker-compose up --build
+```
 
-2. **Access the services:**
-   - Upload Service API: http://localhost:8080
-   - RabbitMQ Management UI: http://localhost:15672 (username: `guest`, password: `guest`)
+**Option 2: High Availability Setup (Redis Sentinel)**
+```bash
+docker-compose -f docker-compose.redis-ha.yml up --build
+```
+
+**Access the services:**
+- Upload Service API: http://localhost:8080
+- RabbitMQ Management UI: http://localhost:15672 (username: `guest`, password: `guest`)
+- Upload Status Monitoring: http://localhost:8080/api/upload/status/{uploadId}
+
+**Choosing between configurations:**
+- Use `docker-compose.yml` for development/testing (simpler, faster startup)
+- Use `docker-compose.redis-ha.yml` for production-like testing (Redis HA with automatic failover)
 
 ### Local Development
 
