@@ -38,15 +38,18 @@ public class FileUploadController {
             logger.info("Received file upload request: {} (size: {} bytes)",
                     file.getOriginalFilename(), file.getSize());
 
-            String savedFilePath = fileUploadService.saveFile(file);
+            Map<String, Object> uploadResult = fileUploadService.saveFile(file);
 
             response.put("status", "success");
             response.put("message", "File uploaded successfully");
+            response.put("uploadId", uploadResult.get("uploadId"));
             response.put("filename", file.getOriginalFilename());
             response.put("size", file.getSize());
-            response.put("path", savedFilePath);
+            response.put("path", uploadResult.get("filePath"));
+            response.put("checksum", uploadResult.get("checksum"));
+            response.put("statusUrl", "/api/upload/status/" + uploadResult.get("uploadId"));
 
-            logger.info("File uploaded successfully: {}", savedFilePath);
+            logger.info("File uploaded successfully: {}", uploadResult.get("filePath"));
 
             return ResponseEntity.ok(response);
 

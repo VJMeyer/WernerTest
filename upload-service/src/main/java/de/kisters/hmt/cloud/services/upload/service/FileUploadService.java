@@ -1,6 +1,7 @@
 package de.kisters.hmt.cloud.services.upload.service;
 
 import de.kisters.hmt.cloud.messaging.dto.FileUploadMessage;
+import de.kisters.hmt.cloud.services.upload.model.UploadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -15,7 +16,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -33,49 +36,75 @@ public class FileUploadService {
     private String routingKey;
 
     private final RabbitTemplate rabbitTemplate;
+    private final UploadStatusService uploadStatusService;
 
-    public FileUploadService(RabbitTemplate rabbitTemplate) {
+    public FileUploadService(RabbitTemplate rabbitTemplate, UploadStatusService uploadStatusService) {
         this.rabbitTemplate = rabbitTemplate;
+        this.uploadStatusService = uploadStatusService;
     }
 
-    public String saveFile(MultipartFile file) throws IOException {
-        // Create upload directory if it doesn't exist
-        Path uploadPath = Paths.get(uploadDirectory);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            logger.info("Created upload directory: {}", uploadPath);
-        }
-
-        // Generate unique filename
+    public Map<String, Object> saveFile(MultipartFile file) throws IOException {
         String originalFilename = file.getOriginalFilename();
-        String fileExtension = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        Long fileSize = file.getSize();
+
+        // Create upload status tracking
+        UploadStatus uploadStatus = uploadStatusService.createUploadStatus(originalFilename, fileSize);
+        String uploadId = uploadStatus.getUploadId();
+
+        try {
+            // Create upload directory if it doesn't exist
+            Path uploadPath = Paths.get(uploadDirectory);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+                logger.info("Created upload directory: {}", uploadPath);
+            }
+
+            // Generate unique filename
+            String fileExtension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+
+            // Mark as processing
+            uploadStatusService.markProcessing(uploadId);
+
+            // Save file to disk
+            Path filePath = uploadPath.resolve(uniqueFilename);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            logger.info("File saved to disk: {}", filePath);
+
+            // Calculate checksum
+            String checksum = calculateChecksum(file);
+
+            // Mark as completed
+            uploadStatusService.markCompleted(uploadId, filePath.toString(), checksum);
+
+            // Send message to RabbitMQ
+            FileUploadMessage message = new FileUploadMessage(
+                    uniqueFilename,
+                    originalFilename,
+                    filePath.toString(),
+                    file.getSize(),
+                    file.getContentType(),
+                    checksum
+            );
+
+            sendMessage(message);
+
+            // Return result with uploadId for status tracking
+            Map<String, Object> result = new HashMap<>();
+            result.put("uploadId", uploadId);
+            result.put("filePath", filePath.toString());
+            result.put("checksum", checksum);
+            return result;
+
+        } catch (Exception e) {
+            // Mark upload as failed
+            uploadStatusService.markFailed(uploadId, e.getMessage());
+            throw e;
         }
-        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-
-        // Save file to disk
-        Path filePath = uploadPath.resolve(uniqueFilename);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        logger.info("File saved to disk: {}", filePath);
-
-        // Calculate checksum
-        String checksum = calculateChecksum(file);
-
-        // Send message to RabbitMQ
-        FileUploadMessage message = new FileUploadMessage(
-                uniqueFilename,
-                originalFilename,
-                filePath.toString(),
-                file.getSize(),
-                file.getContentType(),
-                checksum
-        );
-
-        sendMessage(message);
-
-        return filePath.toString();
     }
 
     private void sendMessage(FileUploadMessage message) {

@@ -1,6 +1,7 @@
 package de.kisters.hmt.cloud.services.upload.listener;
 
 import de.kisters.hmt.cloud.messaging.dto.FileUploadMessage;
+import de.kisters.hmt.cloud.services.upload.service.UploadStatusService;
 import me.desair.tus.server.TusFileUploadService;
 import me.desair.tus.server.upload.UploadInfo;
 import org.slf4j.Logger;
@@ -36,22 +37,30 @@ public class TusUploadListener {
 
     private final RabbitTemplate rabbitTemplate;
     private final TusFileUploadService tusFileUploadService;
+    private final UploadStatusService uploadStatusService;
 
-    public TusUploadListener(RabbitTemplate rabbitTemplate, TusFileUploadService tusFileUploadService) {
+    public TusUploadListener(RabbitTemplate rabbitTemplate, TusFileUploadService tusFileUploadService, UploadStatusService uploadStatusService) {
         this.rabbitTemplate = rabbitTemplate;
         this.tusFileUploadService = tusFileUploadService;
+        this.uploadStatusService = uploadStatusService;
     }
 
     public void processCompletedUpload(String uploadId) throws IOException {
         logger.info("Processing completed TUS upload: {}", uploadId);
+
+        // Mark as processing
+        uploadStatusService.markProcessing(uploadId);
 
         // Get upload information
         UploadInfo uploadInfo = tusFileUploadService.getUploadInfo(uploadId);
 
         if (uploadInfo == null) {
             logger.error("Upload info not found for upload ID: {}", uploadId);
+            uploadStatusService.markFailed(uploadId, "Upload info not found");
             return;
         }
+
+        try {
 
         // Extract metadata
         String originalFilename = uploadInfo.getFileName();
@@ -93,30 +102,39 @@ public class TusUploadListener {
             logger.info("File moved to permanent storage: {}", permanentFilePath);
         }
 
-        // Calculate checksum
-        String checksum = calculateChecksum(permanentFilePath);
+            // Calculate checksum
+            String checksum = calculateChecksum(permanentFilePath);
 
-        // Create and send message to RabbitMQ
-        FileUploadMessage message = new FileUploadMessage(
-                uniqueFilename,
-                originalFilename,
-                permanentFilePath.toString(),
-                fileSize != null ? fileSize : 0L,
-                contentType,
-                checksum
-        );
+            // Mark upload as completed
+            uploadStatusService.markCompleted(uploadId, permanentFilePath.toString(), checksum);
 
-        sendMessage(message);
+            // Create and send message to RabbitMQ
+            FileUploadMessage message = new FileUploadMessage(
+                    uniqueFilename,
+                    originalFilename,
+                    permanentFilePath.toString(),
+                    fileSize != null ? fileSize : 0L,
+                    contentType,
+                    checksum
+            );
 
-        // Clean up tus upload data
-        try {
-            tusFileUploadService.deleteUpload(uploadId);
-            logger.info("Cleaned up TUS upload data for: {}", uploadId);
+            sendMessage(message);
+
+            // Clean up tus upload data
+            try {
+                tusFileUploadService.deleteUpload(uploadId);
+                logger.info("Cleaned up TUS upload data for: {}", uploadId);
+            } catch (Exception e) {
+                logger.warn("Failed to clean up TUS upload data: {}", e.getMessage());
+            }
+
+            logger.info("Successfully processed upload: {} -> {}", originalFilename, permanentFilePath);
+
         } catch (Exception e) {
-            logger.warn("Failed to clean up TUS upload data: {}", e.getMessage());
+            logger.error("Error processing TUS upload {}: {}", uploadId, e.getMessage(), e);
+            uploadStatusService.markFailed(uploadId, e.getMessage());
+            throw e;
         }
-
-        logger.info("Successfully processed upload: {} -> {}", originalFilename, permanentFilePath);
     }
 
     private void sendMessage(FileUploadMessage message) {

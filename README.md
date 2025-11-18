@@ -15,10 +15,262 @@ This system follows a microservices architecture with three main components:
 ```
 User → Upload Service → File Storage → RabbitMQ → Batch Processor → wiskBat → Database
          (Web API)                     (Message)    (Consumer)      (CSV Extract)
+              ↓
+           Redis (Upload Status Tracking)
+```
+
+## High Availability Architecture
+
+This system is designed for **production deployment on multiple servers** with **no single point of failure**.
+
+### Key HA Features
+
+- **Multi-Server Deployment**: Run upload service on 3+ servers behind a load balancer
+- **Distributed Upload Monitoring**: Redis-based status tracking accessible from any server
+- **Message Persistence**: RabbitMQ configured for durable queues and persistent messages
+- **Shared File Storage**: NFS-ready architecture for highly available file storage
+- **24-Hour Status Retention**: Upload status remains queryable for 24 hours after completion
+
+### Components for High Availability
+
+#### 1. Redis (Distributed State Store)
+
+Redis stores upload status that can be queried from any server:
+- Upload progress tracking
+- Filename, file size, bytes uploaded
+- Status (UPLOADING, PROCESSING, COMPLETED, FAILED)
+- Automatic TTL expiration (24 hours after completion)
+
+**Configuration:**
+```properties
+spring.data.redis.host=redis
+spring.data.redis.port=6379
+```
+
+#### 2. RabbitMQ (Reliable Message Broker)
+
+Configured for message persistence:
+- **Durable queues**: Survive broker restarts
+- **Persistent messages**: Not lost on broker failure
+- **Publisher confirms**: Guaranteed message delivery
+- **Manual acknowledgment**: Messages redelivered on consumer failure
+
+**HA Configuration:**
+```properties
+# Publisher side (upload-service)
+spring.rabbitmq.publisher-confirm-type=correlated
+spring.rabbitmq.publisher-returns=true
+spring.rabbitmq.template.mandatory=true
+
+# Consumer side (batch-processor)
+spring.rabbitmq.listener.simple.acknowledge-mode=manual
+spring.rabbitmq.listener.simple.prefetch=1
+```
+
+#### 3. NFS-Ready File Storage
+
+Upload directory configured to work with highly available NFS:
+```yaml
+volumes:
+  upload_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=nfs.server.com,rw
+      device: ":/path/to/shared/uploads"
+```
+
+### Upload Status Monitoring
+
+When uploading a file, clients receive a monitoring URL to track progress.
+
+#### Response from Upload
+
+```json
+{
+  "status": "success",
+  "uploadId": "a1b2c3d4-e5f6-7890",
+  "statusUrl": "/api/upload/status/a1b2c3d4-e5f6-7890",
+  "filename": "data.csv",
+  "size": 10485760
+}
+```
+
+#### Check Upload Status
+
+```bash
+curl http://localhost:8080/api/upload/status/a1b2c3d4-e5f6-7890
+```
+
+Response:
+```json
+{
+  "uploadId": "a1b2c3d4-e5f6-7890",
+  "filename": "data.csv",
+  "fileSize": 10485760,
+  "bytesUploaded": 5242880,
+  "status": "UPLOADING",
+  "progressPercentage": "50.00",
+  "createdAt": "2025-11-18T10:30:00",
+  "isComplete": false,
+  "isFailed": false,
+  "isProcessing": true
+}
+```
+
+**Status Values:**
+- `UPLOADING`: File upload in progress
+- `PROCESSING`: Upload complete, processing file
+- `COMPLETED`: File successfully processed
+- `FAILED`: Upload or processing failed
+
+**Status Retention:**
+- Active uploads: No expiration
+- Completed uploads: 24 hours (86400 seconds)
+- Failed uploads: 1 hour (3600 seconds)
+
+#### Multi-Server Access
+
+The status endpoint works from **any server** in your deployment:
+```bash
+# Query from server 1
+curl http://server1.example.com/api/upload/status/a1b2c3d4-e5f6-7890
+
+# Query from server 2 (same result)
+curl http://server2.example.com/api/upload/status/a1b2c3d4-e5f6-7890
+
+# Query from server 3 (same result)
+curl http://server3.example.com/api/upload/status/a1b2c3d4-e5f6-7890
+```
+
+All servers share the same Redis instance, providing consistent status information.
+
+### Production Deployment
+
+#### Architecture Diagram
+
+```
+                           Load Balancer
+                                |
+                --------------------------------
+                |               |              |
+         Upload Service   Upload Service  Upload Service
+          (Server 1)       (Server 2)      (Server 3)
+                |               |              |
+                --------------------------------
+                        |              |
+                      Redis      RabbitMQ (HA)
+                        |              |
+                    NFS Storage   Batch Processor
+```
+
+#### Deployment Steps
+
+1. **Setup Shared Infrastructure:**
+   ```bash
+   # Redis (single instance or cluster)
+   docker run -d --name redis redis:7-alpine --appendonly yes
+
+   # RabbitMQ (with management, consider clustering)
+   docker run -d --name rabbitmq \
+     -p 5672:5672 -p 15672:15672 \
+     rabbitmq:3.12-management-alpine
+   ```
+
+2. **Configure NFS Storage:**
+   ```yaml
+   # docker-compose.yml on each server
+   volumes:
+     upload_data:
+       driver: local
+       driver_opts:
+         type: nfs
+         o: addr=<NFS_SERVER_IP>,rw
+         device: ":/mnt/shared/uploads"
+   ```
+
+3. **Deploy Upload Service on 3 Servers:**
+   ```bash
+   # On each server
+   docker-compose up -d upload-service
+   ```
+
+4. **Configure Load Balancer:**
+   ```nginx
+   upstream upload_servers {
+     server server1.example.com:8080;
+     server server2.example.com:8080;
+     server server3.example.com:8080;
+   }
+
+   server {
+     listen 80;
+     location / {
+       proxy_pass http://upload_servers;
+     }
+   }
+   ```
+
+5. **Deploy Batch Processor:**
+   ```bash
+   # Can run on any server with access to NFS and RabbitMQ
+   docker-compose up -d batch-processor
+   ```
+
+#### Environment Variables for Production
+
+**upload-service:**
+```yaml
+environment:
+  SPRING_RABBITMQ_HOST: rabbitmq.production.local
+  SPRING_DATA_REDIS_HOST: redis.production.local
+  UPLOAD_DIRECTORY: /mnt/nfs/uploads
+```
+
+**batch-processor:**
+```yaml
+environment:
+  SPRING_RABBITMQ_HOST: rabbitmq.production.local
+  WISKBAT_ENABLED: "true"
+```
+
+### Monitoring and Health Checks
+
+#### Health Endpoints
+
+```bash
+# Upload service health
+curl http://localhost:8080/api/upload/health
+
+# TUS service health
+curl http://localhost:8080/api/tus/health
+
+# Actuator health (includes Redis, RabbitMQ)
+curl http://localhost:8080/actuator/health
+```
+
+#### RabbitMQ Management UI
+
+Monitor message flow and queue status:
+- URL: http://rabbitmq.server:15672
+- Check queue depth, message rates, consumer status
+
+#### Redis Monitoring
+
+```bash
+# Check Redis connection
+redis-cli -h redis.server PING
+
+# Monitor upload status keys
+redis-cli -h redis.server KEYS "UploadStatus:*"
+
+# Check TTL on completed uploads
+redis-cli -h redis.server TTL "UploadStatus:a1b2c3d4-e5f6-7890"
 ```
 
 ## Features
 
+### Core Functionality
 - **Multi-module Maven project structure**
 - **Java 21 with Virtual Threads** for improved scalability and performance
 - **TUS Protocol for resumable uploads** - recover from network interruptions
@@ -29,6 +281,16 @@ User → Upload Service → File Storage → RabbitMQ → Batch Processor → wi
 - **Docker containerization** with Docker Compose orchestration
 - **Health check endpoints** for monitoring
 - **JSON message serialization**
+
+### High Availability Features
+- **Distributed upload status tracking** via Redis
+- **Multi-server deployment ready** - no single point of failure
+- **Real-time progress monitoring** from any server
+- **24-hour status retention** after upload completion
+- **Persistent message queues** - no message loss on failures
+- **Publisher confirms** for guaranteed message delivery
+- **NFS-ready file storage** for shared access across servers
+- **Load balancer compatible** architecture
 
 ## Project Structure
 

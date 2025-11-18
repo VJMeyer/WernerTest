@@ -31,7 +31,7 @@ public class RabbitMQConfig {
 
     @Bean
     public TopicExchange fileProcessingExchange() {
-        return new TopicExchange(exchangeName);
+        return new TopicExchange(exchangeName, true, false); // durable, non-auto-delete
     }
 
     @Bean
@@ -51,6 +51,8 @@ public class RabbitMQConfig {
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(jsonMessageConverter());
+        // Enable publisher confirms for guaranteed delivery
+        rabbitTemplate.setMandatory(true);
         return rabbitTemplate;
     }
 }

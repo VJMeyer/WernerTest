@@ -41,6 +41,12 @@
             <version>1.0.0-3.0</version>
         </dependency>
 
+        <!-- Redis for distributed upload status tracking -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
