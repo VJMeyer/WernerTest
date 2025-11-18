@@ -7,6 +7,19 @@ fileprocessing::cluster_servers:
   - 'server2.example.com'
   - 'server3.example.com'
 
+# TLS Configuration for RabbitMQ (optional but recommended for production)
+# Enable TLS on application cluster servers (installs HAProxy on port 443)
+fileprocessing::enable_rabbitmq_tls: false
+
+# Use TLS for RabbitMQ connections (for batch nodes connecting remotely)
+fileprocessing::use_tls: false
+
+# To enable TLS:
+# 1. Generate certificates: puppet/files/generate-rabbitmq-certs.sh
+# 2. Copy certificates to Puppet files directory
+# 3. Set both values above to true
+# 4. See puppet/TLS_AND_BATCH_NODES.md for details
+
 # NFS Configuration (optional - comment out if not using NFS)
 # fileprocessing::nfs_server: 'nfs-server.example.com'
 # fileprocessing::nfs_export: '/exports/fileprocessing'

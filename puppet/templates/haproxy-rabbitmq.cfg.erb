@@ -1,0 +1,74 @@
+#---------------------------------------------------------------------
+# HAProxy Configuration for RabbitMQ TLS Termination
+# Listens on port 443 (HTTPS) and forwards to RabbitMQ AMQP on port 5672
+#---------------------------------------------------------------------
+
+global
+    log         /dev/log local0
+    log         /dev/log local1 notice
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+    # turn on stats unix socket
+    stats socket /var/lib/haproxy/stats
+
+    # SSL/TLS settings
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+    ssl-default-bind-options no-sslv3 no-tlsv10 no-tlsv11
+    ssl-default-server-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+    ssl-default-server-options no-sslv3 no-tlsv10 no-tlsv11
+
+defaults
+    mode                    tcp
+    log                     global
+    option                  tcplog
+    option                  dontlognull
+    option                  redispatch
+    retries                 3
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1h
+    timeout server          1h
+    timeout check           10s
+    maxconn                 3000
+
+#---------------------------------------------------------------------
+# RabbitMQ AMQP Frontend (TLS termination on port 443)
+#---------------------------------------------------------------------
+frontend rabbitmq_frontend
+    bind *:443 ssl crt /etc/haproxy/tls/rabbitmq.pem
+    mode tcp
+    option tcplog
+    default_backend rabbitmq_backend
+
+#---------------------------------------------------------------------
+# RabbitMQ AMQP Backend (forward to local RabbitMQ on port 5672)
+#---------------------------------------------------------------------
+backend rabbitmq_backend
+    mode tcp
+    balance roundrobin
+    option tcp-check
+
+    # Health check for RabbitMQ
+    tcp-check connect port 5672
+
+    # RabbitMQ cluster servers
+<% @cluster_servers.each_with_index do |server, index| %>
+    server rabbitmq<%= index + 1 %> <%= server %>:5672 check inter 5s rise 2 fall 3
+<% end %>
+
+#---------------------------------------------------------------------
+# HAProxy Statistics Page (optional)
+#---------------------------------------------------------------------
+listen stats
+    bind *:8404
+    mode http
+    stats enable
+    stats uri /stats
+    stats refresh 30s
+    stats show-legends
+    stats admin if TRUE

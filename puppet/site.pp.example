@@ -2,44 +2,58 @@
 # Copy this to /etc/puppetlabs/code/environments/production/manifests/site.pp
 # and update with your actual server names
 
+# ==============================================================================
+# Application Cluster Servers (1-3)
+# ==============================================================================
+
 # Server 1 - Application Cluster Master
 node 'server1.example.com', 'server1' {
   class { 'fileprocessing':
-    role              => 'app_cluster',
-    server_id         => 1,
-    cluster_servers   => lookup('fileprocessing::cluster_servers'),
-    rabbitmq_password => lookup('fileprocessing::rabbitmq_password'),
-    redis_password    => lookup('fileprocessing::redis_password'),
-    nfs_server        => lookup('fileprocessing::nfs_server', Optional[String], undef),
-    nfs_export        => lookup('fileprocessing::nfs_export', Optional[String], undef),
+    role                 => 'app_cluster',
+    server_id            => 1,
+    cluster_servers      => lookup('fileprocessing::cluster_servers'),
+    enable_rabbitmq_tls  => lookup('fileprocessing::enable_rabbitmq_tls', Boolean, false),
+    use_tls              => lookup('fileprocessing::use_tls', Boolean, false),
+    rabbitmq_password    => lookup('fileprocessing::rabbitmq_password'),
+    redis_password       => lookup('fileprocessing::redis_password'),
+    nfs_server           => lookup('fileprocessing::nfs_server', Optional[String], undef),
+    nfs_export           => lookup('fileprocessing::nfs_export', Optional[String], undef),
   }
 }
 
 # Server 2 - Application Cluster Node
 node 'server2.example.com', 'server2' {
   class { 'fileprocessing':
-    role              => 'app_cluster',
-    server_id         => 2,
-    cluster_servers   => lookup('fileprocessing::cluster_servers'),
-    rabbitmq_password => lookup('fileprocessing::rabbitmq_password'),
-    redis_password    => lookup('fileprocessing::redis_password'),
-    nfs_server        => lookup('fileprocessing::nfs_server', Optional[String], undef),
-    nfs_export        => lookup('fileprocessing::nfs_export', Optional[String], undef),
+    role                 => 'app_cluster',
+    server_id            => 2,
+    cluster_servers      => lookup('fileprocessing::cluster_servers'),
+    enable_rabbitmq_tls  => lookup('fileprocessing::enable_rabbitmq_tls', Boolean, false),
+    use_tls              => lookup('fileprocessing::use_tls', Boolean, false),
+    rabbitmq_password    => lookup('fileprocessing::rabbitmq_password'),
+    redis_password       => lookup('fileprocessing::redis_password'),
+    nfs_server           => lookup('fileprocessing::nfs_server', Optional[String], undef),
+    nfs_export           => lookup('fileprocessing::nfs_export', Optional[String], undef),
   }
 }
 
 # Server 3 - Application Cluster Node
 node 'server3.example.com', 'server3' {
   class { 'fileprocessing':
-    role              => 'app_cluster',
-    server_id         => 3,
-    cluster_servers   => lookup('fileprocessing::cluster_servers'),
-    rabbitmq_password => lookup('fileprocessing::rabbitmq_password'),
-    redis_password    => lookup('fileprocessing::redis_password'),
-    nfs_server        => lookup('fileprocessing::nfs_server', Optional[String], undef),
-    nfs_export        => lookup('fileprocessing::nfs_export', Optional[String], undef),
+    role                 => 'app_cluster',
+    server_id            => 3,
+    cluster_servers      => lookup('fileprocessing::cluster_servers'),
+    enable_rabbitmq_tls  => lookup('fileprocessing::enable_rabbitmq_tls', Boolean, false),
+    use_tls              => lookup('fileprocessing::use_tls', Boolean, false),
+    rabbitmq_password    => lookup('fileprocessing::rabbitmq_password'),
+    redis_password       => lookup('fileprocessing::redis_password'),
+    nfs_server           => lookup('fileprocessing::nfs_server', Optional[String], undef),
+    nfs_export           => lookup('fileprocessing::nfs_export', Optional[String], undef),
   }
 }
+
+# ==============================================================================
+# Keycloak Server (4)
+# ==============================================================================
 
 # Server 4 - Keycloak Authentication Server
 node 'server4.example.com', 'server4' {
@@ -51,3 +65,33 @@ node 'server4.example.com', 'server4' {
     postgres_password       => lookup('fileprocessing::postgres_password'),
   }
 }
+
+# ==============================================================================
+# Standalone Batch Processor Nodes (Optional)
+# Deploy these nodes near databases or Windows systems with wiskBat
+# Connect to RabbitMQ cluster via TLS on port 443
+# ==============================================================================
+
+# Batch Node 1 - Standalone Batch Processor
+node 'batch1.example.com', 'batch1' {
+  class { 'fileprocessing':
+    role              => 'batch_node',
+    server_id         => 5,
+    cluster_servers   => lookup('fileprocessing::cluster_servers'),
+    use_tls           => lookup('fileprocessing::use_tls', Boolean, true),
+    rabbitmq_password => lookup('fileprocessing::rabbitmq_password'),
+  }
+}
+
+# Batch Node 2 - Another Batch Processor (if needed)
+node 'batch2.example.com', 'batch2' {
+  class { 'fileprocessing':
+    role              => 'batch_node',
+    server_id         => 6,
+    cluster_servers   => lookup('fileprocessing::cluster_servers'),
+    use_tls           => lookup('fileprocessing::use_tls', Boolean, true),
+    rabbitmq_password => lookup('fileprocessing::rabbitmq_password'),
+  }
+}
+
+# Add more batch nodes as needed...

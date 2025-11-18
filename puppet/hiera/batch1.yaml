@@ -1,0 +1,10 @@
+---
+# Hiera data for Batch Node 1 (Standalone Batch Processor)
+
+fileprocessing::role: 'batch_node'
+fileprocessing::server_id: 5
+
+# Use TLS to connect to RabbitMQ cluster over port 443
+fileprocessing::use_tls: true
+
+# Note: cluster_servers and rabbitmq_password are inherited from common.yaml

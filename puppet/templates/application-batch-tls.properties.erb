@@ -1,0 +1,61 @@
+# Batch Processor Configuration with TLS Support
+spring.application.name=batch-processor
+
+# RabbitMQ Configuration
+<% if @use_tls %>
+# TLS-enabled connection via HAProxy on port 443
+spring.rabbitmq.host=<%= @cluster_servers[0] %>
+spring.rabbitmq.port=443
+spring.rabbitmq.ssl.enabled=true
+spring.rabbitmq.ssl.algorithm=TLSv1.3
+spring.rabbitmq.ssl.validate-server-certificate=true
+
+# Trust store for RabbitMQ TLS
+spring.rabbitmq.ssl.trust-store=<%= @fileprocessing::params::app_home %>/batch-processor/truststore.jks
+spring.rabbitmq.ssl.trust-store-password=changeit
+spring.rabbitmq.ssl.trust-store-type=JKS
+
+# RabbitMQ HA Configuration - All cluster servers via TLS
+spring.rabbitmq.addresses=<%= @cluster_servers.map{|s| "#{s}:443"}.join(',') %>
+<% else %>
+# Standard non-TLS connection
+spring.rabbitmq.host=<%= @cluster_servers[0] %>
+spring.rabbitmq.port=<%= @fileprocessing::params::rabbitmq_port %>
+
+# RabbitMQ HA Configuration - All cluster servers
+spring.rabbitmq.addresses=<%= @cluster_servers.map{|s| "#{s}:#{@fileprocessing::params::rabbitmq_port}"}.join(',') %>
+<% end %>
+
+# RabbitMQ Authentication
+spring.rabbitmq.username=<%= @fileprocessing::params::rabbitmq_user %>
+spring.rabbitmq.password=<%= @rabbitmq_password['password'] %>
+spring.rabbitmq.virtual-host=<%= @fileprocessing::params::rabbitmq_vhost %>
+
+# Consumer Configuration
+spring.rabbitmq.listener.simple.acknowledge-mode=manual
+spring.rabbitmq.listener.simple.prefetch=1
+spring.rabbitmq.listener.simple.retry.enabled=true
+spring.rabbitmq.listener.simple.retry.max-attempts=3
+
+# Connection timeout and retry
+spring.rabbitmq.connection-timeout=30000
+spring.rabbitmq.requested-heartbeat=60
+
+# Batch File Configuration
+batch.output-dir=<%= @fileprocessing::params::app_home %>/batch-output
+batch.wiski-bat-path=/path/to/wiskBat  # Configure this for your environment
+
+# Virtual Threads (Java 21)
+spring.threads.virtual.enabled=true
+
+# Logging
+logging.level.root=INFO
+logging.level.de.kisters.hmt.cloud=DEBUG
+logging.level.org.springframework.amqp=DEBUG
+logging.file.name=<%= @fileprocessing::params::log_dir %>/batch-processor.log
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %msg%n
+logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+
+# Health and Monitoring
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=always
