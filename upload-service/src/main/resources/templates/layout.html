@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} ?: 'File Processing System'">File Processing System</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- HTMX for dynamic interactions -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Alpine.js for simple client-side interactions -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Custom Tailwind config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+
+        /* Custom animations */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* File upload drag and drop */
+        .drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+
+        /* Progress bar animation */
+        @keyframes progress {
+            from { width: 0%; }
+        }
+
+        .progress-animate {
+            animation: progress 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <svg class="h-8 w-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <span class="ml-2 text-xl font-bold text-gray-900">File Processing</span>
+                    </div>
+
+                    <!-- Navigation Links -->
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8" sec:authorize="isAuthenticated()">
+                        <a href="/dashboard" class="border-primary-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Dashboard
+                        </a>
+                        <a sec:authorize="hasAnyRole('ADMIN', 'ORG_ADMIN')" href="/admin" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Admin
+                        </a>
+                    </div>
+                </div>
+
+                <!-- User Menu -->
+                <div class="flex items-center" sec:authorize="isAuthenticated()">
+                    <div class="ml-3 relative" x-data="{ open: false }">
+                        <div>
+                            <button @click="open = !open" type="button" class="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" id="user-menu-button">
+                                <span class="sr-only">Open user menu</span>
+                                <div class="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold">
+                                    <span th:text="${#strings.substring(username ?: 'U', 0, 1).toUpperCase()}">U</span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <div x-show="open" @click.away="open = false" x-cloak
+                             class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <p class="text-sm text-gray-500">Signed in as</p>
+                                <p class="text-sm font-medium text-gray-900 truncate" th:text="${email ?: username}">user@example.com</p>
+                                <p class="text-xs text-gray-500 mt-1" th:text="${organization}">Organization</p>
+                            </div>
+                            <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Your Profile</a>
+                            <a href="/logout" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign out</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Toast Notifications Container -->
+        <div id="toast-container" class="fixed top-20 right-4 z-50 space-y-2"></div>
+
+        <!-- Page Content -->
+        <div layout:fragment="content">
+            <!-- Page-specific content will be inserted here -->
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">
+                &copy; 2025 File Processing System. Built with Spring Boot, Keycloak & HTMX.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Template -->
+    <template id="toast-template">
+        <div class="slide-in max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden">
+            <div class="p-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3 w-0 flex-1 pt-0.5">
+                        <p class="text-sm font-medium text-gray-900 toast-title">Success</p>
+                        <p class="mt-1 text-sm text-gray-500 toast-message">Operation completed successfully.</p>
+                    </div>
+                    <div class="ml-4 flex-shrink-0 flex">
+                        <button onclick="this.closest('[role=alert]').remove()" class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none">
+                            <span class="sr-only">Close</span>
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        // Toast notification function
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const template = document.getElementById('toast-template');
+            const toast = template.content.cloneNode(true);
+
+            const wrapper = document.createElement('div');
+            wrapper.setAttribute('role', 'alert');
+            wrapper.appendChild(toast);
+
+            wrapper.querySelector('.toast-title').textContent = title;
+            wrapper.querySelector('.toast-message').textContent = message;
+
+            const colors = {
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400',
+                info: 'text-blue-400'
+            };
+
+            const icon = wrapper.querySelector('svg');
+            icon.className = `h-6 w-6 ${colors[type] || colors.success}`;
+
+            container.appendChild(wrapper);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => wrapper.remove(), 5000);
+        }
+
+        // HTMX configuration: Add JWT token to all requests
+        document.body.addEventListener('htmx:configRequest', function(event) {
+            const token = sessionStorage.getItem('access_token');
+            if (token) {
+                event.detail.headers['Authorization'] = 'Bearer ' + token;
+            }
+        });
+
+        // HTMX event listeners
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            // Handle successful operations
+            if (event.detail.successful && event.detail.xhr.status === 200) {
+                const target = event.detail.target;
+                if (target.hasAttribute('data-success-message')) {
+                    showToast('Success', target.getAttribute('data-success-message'), 'success');
+                }
+            }
+        });
+
+        document.body.addEventListener('htmx:responseError', function(event) {
+            // Handle 401 Unauthorized - redirect to login
+            if (event.detail.xhr && event.detail.xhr.status === 401) {
+                sessionStorage.removeItem('access_token');
+                window.location.href = '/login';
+                return;
+            }
+            showToast('Error', 'An error occurred. Please try again.', 'error');
+        });
+    </script>
+</body>
+</html>

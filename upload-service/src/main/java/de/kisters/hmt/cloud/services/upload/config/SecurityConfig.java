@@ -46,19 +46,25 @@ public class SecurityConfig {
      * Configure HTTP security with JWT authentication.
      *
      * Security rules:
+     * - Login page and static resources are public
      * - Health endpoints are public
-     * - All other API endpoints require authentication
+     * - Web pages and API endpoints require JWT authentication
      * - Stateless session management (JWT-based)
-     * - CSRF disabled for REST API
+     * - CSRF disabled (JWT tokens used instead)
+     *
+     * Note: Web pages send JWT via Authorization header using HTMX interceptor (see layout.html)
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for REST API
+            .csrf(csrf -> csrf.disable()) // Disable CSRF - using JWT tokens
             .authorizeHttpRequests(authz -> authz
-                // Public endpoints
+                // Public endpoints - login/logout pages and static resources
+                .requestMatchers("/", "/login", "/logout", "/css/**", "/js/**", "/images/**",
+                                "/webjars/**", "/favicon.ico").permitAll()
+                // Public API health check endpoints
                 .requestMatchers("/api/upload/health", "/api/tus/health", "/actuator/**").permitAll()
-                // All other endpoints require authentication
+                // All other endpoints (web pages and APIs) require JWT authentication
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

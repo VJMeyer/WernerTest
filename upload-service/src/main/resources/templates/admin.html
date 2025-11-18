@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout}">
+<head>
+    <title>Admin Dashboard - File Processing System</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <!-- Admin Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Organization Admin Dashboard</h1>
+            <p class="mt-2 text-gray-600">
+                Manage and monitor uploads for
+                <span class="font-semibold text-primary-600" th:text="${organization}">Organization</span>
+            </p>
+        </div>
+
+        <!-- Admin Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Keycloak Admin Card -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="ml-3 text-lg font-semibold text-gray-900">Manage Users</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">
+                    Create and manage users in your organization through the Keycloak admin console.
+                </p>
+                <a
+                    href="http://localhost:8180/admin"
+                    target="_blank"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition"
+                >
+                    Open Keycloak Admin
+                    <svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- Organization Info Card -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                    <h3 class="ml-3 text-lg font-semibold text-gray-900">Organization</h3>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <div>
+                        <span class="text-gray-500">Name:</span>
+                        <span class="ml-2 font-medium text-gray-900" th:text="${organization}">Organization</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500">ID:</span>
+                        <span class="ml-2 font-mono text-xs text-gray-900" th:text="${orgId}">org-id</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500">Admin:</span>
+                        <span class="ml-2 font-medium text-gray-900" th:text="${username}">Admin</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats Card -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="ml-3 text-lg font-semibold text-gray-900">Statistics</h3>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Total Uploads:</span>
+                        <span class="font-semibold text-gray-900">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Active Users:</span>
+                        <span class="font-semibold text-gray-900">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">This Month:</span>
+                        <span class="font-semibold text-gray-900">-</span>
+                    </div>
+                </div>
+                <p class="mt-4 text-xs text-gray-500">
+                    * Statistics coming soon
+                </p>
+            </div>
+        </div>
+
+        <!-- User Management Guide -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">How to Create Users</h2>
+
+            <div class="prose max-w-none">
+                <ol class="space-y-4 text-sm text-gray-700">
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold mr-3">1</span>
+                        <div>
+                            <strong>Access Keycloak Admin Console</strong>
+                            <p class="text-gray-600 mt-1">Click "Open Keycloak Admin" button above and log in with your organization admin credentials.</p>
+                        </div>
+                    </li>
+
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold mr-3">2</span>
+                        <div>
+                            <strong>Navigate to Users</strong>
+                            <p class="text-gray-600 mt-1">In the left sidebar, click on "Users" to see the list of existing users.</p>
+                        </div>
+                    </li>
+
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold mr-3">3</span>
+                        <div>
+                            <strong>Create New User</strong>
+                            <p class="text-gray-600 mt-1">Click "Create user" and fill in: Username, Email, First name, Last name. Toggle "Email verified" to ON.</p>
+                        </div>
+                    </li>
+
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold mr-3">4</span>
+                        <div>
+                            <strong>Set Password</strong>
+                            <p class="text-gray-600 mt-1">Go to "Credentials" tab, click "Set password", enter password, set "Temporary" to OFF.</p>
+                        </div>
+                    </li>
+
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold mr-3">5</span>
+                        <div>
+                            <strong>Assign to Organization</strong>
+                            <p class="text-gray-600 mt-1">
+                                Go to "Groups" tab, click "Join Group", select
+                                <code class="px-2 py-1 bg-gray-100 rounded text-xs" th:text="'/Organizations/' + ${organization} + '/Users'">Organization/Users</code>
+                            </p>
+                        </div>
+                    </li>
+
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold mr-3">6</span>
+                        <div>
+                            <strong>Assign Role</strong>
+                            <p class="text-gray-600 mt-1">Go to "Role mappings" tab, click "Assign role", select "USER" role.</p>
+                        </div>
+                    </li>
+
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold mr-3">7</span>
+                        <div>
+                            <strong>Set Organization Attributes</strong>
+                            <p class="text-gray-600 mt-1">
+                                Go to "Attributes" tab, add:
+                                <code class="px-2 py-1 bg-gray-100 rounded text-xs">organization</code> =
+                                <code class="px-2 py-1 bg-gray-100 rounded text-xs" th:text="${organization}">Organization</code>,
+                                <code class="px-2 py-1 bg-gray-100 rounded text-xs">orgId</code> =
+                                <code class="px-2 py-1 bg-gray-100 rounded text-xs" th:text="${orgId}">org-id</code>
+                            </p>
+                        </div>
+                    </li>
+                </ol>
+
+                <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex">
+                        <svg class="h-5 w-5 text-blue-400 mr-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="text-sm text-blue-700">
+                            <strong>Tip:</strong> New users can immediately log in at <code class="px-2 py-1 bg-blue-100 rounded">/login</code>
+                            with their username and password to start uploading files.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
