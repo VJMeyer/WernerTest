@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OData Explorer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>OData Service Explorer</h1>
+            <div class="connection-panel">
+                <input type="text" id="serviceUrl" placeholder="Enter OData Service URL (e.g., https://services.odata.org/V4/TripPinServiceRW)" />
+                <button id="connectBtn">Connect</button>
+                <span id="connectionStatus"></span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Left Panel: Entity Set Tree -->
+            <aside class="tree-panel">
+                <h2>Entity Sets</h2>
+                <div id="entityTree" class="tree-container">
+                    <p class="placeholder">Connect to an OData service to view entity sets</p>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Content Area -->
+            <main class="content-panel">
+                <div class="tabs">
+                    <button class="tab-button active" data-tab="grid">Grid View</button>
+                    <button class="tab-button" data-tab="detail">Detail View</button>
+                </div>
+
+                <div class="tab-content">
+                    <!-- Grid Tab -->
+                    <div id="gridTab" class="tab-pane active">
+                        <div class="grid-header">
+                            <h2 id="gridTitle">Select an entity set</h2>
+                            <div class="grid-controls">
+                                <button id="refreshBtn" disabled>Refresh</button>
+                                <span id="recordCount"></span>
+                            </div>
+                        </div>
+                        <div id="gridContainer" class="grid-container">
+                            <p class="placeholder">Select an entity set from the tree to view data</p>
+                        </div>
+                    </div>
+
+                    <!-- Detail Tab -->
+                    <div id="detailTab" class="tab-pane">
+                        <div class="detail-header">
+                            <button id="backBtn" class="back-button">← Back</button>
+                            <h2 id="detailTitle">Detail View</h2>
+                        </div>
+                        <div id="detailContainer" class="detail-container">
+                            <p class="placeholder">Select a row from the grid to view details</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="odataService.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
