@@ -25,6 +25,12 @@ public class UploadStatus implements Serializable {
     private String errorMessage;
     private Double progressPercentage;
 
+    // User and organization information for multi-tenancy
+    private String username;
+    private String userEmail;
+    private String organization;
+    private String orgId;
+
     @TimeToLive(unit = TimeUnit.SECONDS)
     private Long ttl; // Time to live in seconds
 
@@ -165,6 +171,38 @@ public class UploadStatus implements Serializable {
 
     public void setTtl(Long ttl) {
         this.ttl = ttl;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
+    }
+
+    public String getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(String organization) {
+        this.organization = organization;
+    }
+
+    public String getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(String orgId) {
+        this.orgId = orgId;
     }
 
     @Override

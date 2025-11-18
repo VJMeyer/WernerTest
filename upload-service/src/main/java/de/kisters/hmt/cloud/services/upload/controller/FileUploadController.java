@@ -1,11 +1,13 @@
 package de.kisters.hmt.cloud.services.upload.controller;
 
+import de.kisters.hmt.cloud.services.upload.security.JwtUserInfo;
 import de.kisters.hmt.cloud.services.upload.service.FileUploadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,7 +27,12 @@ public class FileUploadController {
         this.fileUploadService = fileUploadService;
     }
 
+    /**
+     * Upload a file - requires authentication.
+     * Users can only upload files to their own organization.
+     */
     @PostMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'ORG_ADMIN')")
     public ResponseEntity<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file) {
         Map<String, Object> response = new HashMap<>();
 
@@ -35,7 +42,9 @@ public class FileUploadController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            logger.info("Received file upload request: {} (size: {} bytes)",
+            JwtUserInfo userInfo = JwtUserInfo.fromSecurityContext();
+            logger.info("Received file upload request from user {}: {} (size: {} bytes)",
+                    userInfo != null ? userInfo.getUsername() : "unknown",
                     file.getOriginalFilename(), file.getSize());
 
             Map<String, Object> uploadResult = fileUploadService.saveFile(file);

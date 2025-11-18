@@ -1,22 +1,67 @@
 # File Processing System with RabbitMQ
 
-A multi-module Maven project demonstrating a file processing system using Spring Boot, RabbitMQ message broker, and Docker. The system consists of a file upload service (producer), a batch processor (consumer), and shared messaging infrastructure.
+A secure, multi-tenant file processing system using Spring Boot, Keycloak authentication, RabbitMQ message broker, and Docker. The system features organization-based user isolation, JWT authentication, and high availability architecture.
 
 ## Architecture
 
-This system follows a microservices architecture with three main components:
+This system follows a microservices architecture with four main components:
 
-1. **Upload Service** - Web application for file uploads (Producer)
-2. **Batch Processor** - Command-line application for processing files (Consumer)
-3. **RabbitMQ** - Message broker for asynchronous communication
+1. **Keycloak** - Identity and access management (Authentication & Authorization)
+2. **Upload Service** - Secure web application for file uploads (Producer)
+3. **Batch Processor** - Command-line application for processing files (Consumer)
+4. **RabbitMQ** - Message broker for asynchronous communication
+
+## Authentication & Authorization
+
+This system uses **Keycloak** for identity management with **JWT tokens** for API authentication.
+
+### Key Features:
+- **Multi-Organization Support**: Each organization has isolated data
+- **Role-Based Access Control**: USER, ORG_ADMIN, and ADMIN roles
+- **JWT Token Authentication**: Secure, stateless authentication
+- **Organization Admins**: Can create and manage users in their organization
+
+### Quick Start with Authentication:
+
+**1. Get an access token:**
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8180/realms/file-processing/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=upload-web-app" \
+  -d "grant_type=password" \
+  -d "username=acme.user1" \
+  -d "password=password" | jq -r '.access_token')
+```
+
+**2. Upload a file (authenticated):**
+```bash
+curl -X POST http://localhost:8080/api/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@myfile.csv"
+```
+
+**3. Check upload status (authenticated):**
+```bash
+curl -X GET http://localhost:8080/api/upload/status/{uploadId} \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**📖 For complete authentication guide, see [AUTHENTICATION.md](AUTHENTICATION.md)**
+
+- How to manage users as organization admin
+- Pre-configured test accounts
+- Access control examples
+- Troubleshooting authentication issues
 
 ### Data Flow
 
 ```
-User → Upload Service → File Storage → RabbitMQ → Batch Processor → wiskBat → Database
-         (Web API)                     (Message)    (Consumer)      (CSV Extract)
+User → Keycloak (Get JWT Token)
+        ↓
+     Upload Service (with JWT) → File Storage → RabbitMQ → Batch Processor → wiskBat → Database
+         (Web API)                               (Message)    (Consumer)      (CSV Extract)
               ↓
-           Redis (Upload Status Tracking)
+         Redis (Upload Status + User/Org Info)
 ```
 
 ## High Availability Architecture
@@ -394,9 +439,16 @@ docker-compose -f docker-compose.redis-ha.yml up --build
 ```
 
 **Access the services:**
-- Upload Service API: http://localhost:8080
-- RabbitMQ Management UI: http://localhost:15672 (username: `guest`, password: `guest`)
-- Upload Status Monitoring: http://localhost:8080/api/upload/status/{uploadId}
+- **Keycloak Admin Console**: http://localhost:8180 (admin: `admin` / `admin`)
+- **Upload Service API**: http://localhost:8080 (requires JWT token - see [AUTHENTICATION.md](AUTHENTICATION.md))
+- **RabbitMQ Management UI**: http://localhost:15672 (username: `guest`, password: `guest`)
+- **Upload Status Monitoring**: http://localhost:8080/api/upload/status/{uploadId} (requires JWT token)
+
+**Test Accounts (see AUTHENTICATION.md for full list):**
+- `acme.user1` / `password` - User in ACME Corporation
+- `acme.admin` / `password` - Admin for ACME Corporation
+- `techstart.user1` / `password` - User in TechStart Inc
+- `admin` / `admin123` - System administrator
 
 **Choosing between configurations:**
 - Use `docker-compose.yml` for development/testing (simpler, faster startup)

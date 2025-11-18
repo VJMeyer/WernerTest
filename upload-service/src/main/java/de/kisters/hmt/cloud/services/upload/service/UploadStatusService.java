@@ -2,6 +2,7 @@ package de.kisters.hmt.cloud.services.upload.service;
 
 import de.kisters.hmt.cloud.services.upload.model.UploadStatus;
 import de.kisters.hmt.cloud.services.upload.repository.UploadStatusRepository;
+import de.kisters.hmt.cloud.services.upload.security.JwtUserInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,8 +27,9 @@ public class UploadStatusService {
     public UploadStatus createUploadStatus(String filename, Long fileSize) {
         String uploadId = UUID.randomUUID().toString();
         UploadStatus status = new UploadStatus(uploadId, filename, fileSize);
+        populateUserInfo(status);
         uploadStatusRepository.save(status);
-        logger.info("Created upload status for upload ID: {}", uploadId);
+        logger.info("Created upload status for upload ID: {} by user: {}", uploadId, status.getUsername());
         return status;
     }
 
@@ -36,9 +38,23 @@ public class UploadStatusService {
      */
     public UploadStatus createUploadStatus(String uploadId, String filename, Long fileSize) {
         UploadStatus status = new UploadStatus(uploadId, filename, fileSize);
+        populateUserInfo(status);
         uploadStatusRepository.save(status);
-        logger.info("Created upload status for upload ID: {}", uploadId);
+        logger.info("Created upload status for upload ID: {} by user: {}", uploadId, status.getUsername());
         return status;
+    }
+
+    /**
+     * Populate user information from JWT token into UploadStatus
+     */
+    private void populateUserInfo(UploadStatus status) {
+        JwtUserInfo userInfo = JwtUserInfo.fromSecurityContext();
+        if (userInfo != null) {
+            status.setUsername(userInfo.getUsername());
+            status.setUserEmail(userInfo.getEmail());
+            status.setOrganization(userInfo.getOrganization());
+            status.setOrgId(userInfo.getOrgId());
+        }
     }
 
     /**
