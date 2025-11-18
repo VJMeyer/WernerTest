@@ -1,0 +1,28 @@
+---
+# Common Hiera data for all servers
+
+# Cluster configuration (update these with your actual hostnames/IPs)
+fileprocessing::cluster_servers:
+  - 'server1.example.com'
+  - 'server2.example.com'
+  - 'server3.example.com'
+
+# NFS Configuration (optional - comment out if not using NFS)
+# fileprocessing::nfs_server: 'nfs-server.example.com'
+# fileprocessing::nfs_export: '/exports/fileprocessing'
+
+# RabbitMQ Password (change in production!)
+fileprocessing::rabbitmq_password:
+  password: 'fileprocessing_rabbitmq_pass_CHANGE_ME'
+
+# Redis Password (change in production!)
+fileprocessing::redis_password:
+  password: 'fileprocessing_redis_pass_CHANGE_ME'
+
+# Keycloak Admin Password (change in production!)
+fileprocessing::keycloak_admin_password:
+  password: 'admin_CHANGE_ME'
+
+# PostgreSQL Password for Keycloak (change in production!)
+fileprocessing::postgres_password:
+  password: 'postgres_CHANGE_ME'

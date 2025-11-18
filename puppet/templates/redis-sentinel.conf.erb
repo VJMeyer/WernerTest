@@ -1,0 +1,29 @@
+# Redis Sentinel Configuration for File Processing System
+# Server: <%= @server_id %>
+
+# Network
+bind 0.0.0.0
+port <%= @fileprocessing::params::redis_sentinel_port %>
+protected-mode no
+
+# General
+daemonize no
+supervised systemd
+pidfile /var/run/redis/redis-sentinel.pid
+logfile /var/log/redis/sentinel.log
+dir /var/lib/redis
+
+# Sentinel Monitor
+sentinel monitor <%= @fileprocessing::params::redis_master_name %> <%= @master_ip %> <%= @fileprocessing::params::redis_port %> 2
+
+# Sentinel Auth
+sentinel auth-pass <%= @fileprocessing::params::redis_master_name %> <%= @redis_password['password'] %>
+
+# Sentinel Timings
+sentinel down-after-milliseconds <%= @fileprocessing::params::redis_master_name %> 5000
+sentinel parallel-syncs <%= @fileprocessing::params::redis_master_name %> 1
+sentinel failover-timeout <%= @fileprocessing::params::redis_master_name %> 30000
+
+# Notifications (optional)
+# sentinel notification-script <%= @fileprocessing::params::redis_master_name %> /path/to/notification-script.sh
+# sentinel client-reconfig-script <%= @fileprocessing::params::redis_master_name %> /path/to/reconfig-script.sh

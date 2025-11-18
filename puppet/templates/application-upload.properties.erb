@@ -1,0 +1,54 @@
+# Upload Service Configuration
+server.port=<%= @fileprocessing::params::upload_service_port %>
+spring.application.name=upload-service
+
+# File Upload Configuration
+file.upload-dir=<%= @fileprocessing::params::upload_dir %>
+spring.servlet.multipart.max-file-size=10GB
+spring.servlet.multipart.max-request-size=10GB
+
+# TUS Configuration
+tus.storage-path=<%= @fileprocessing::params::upload_dir %>/tus
+tus.expiration.period=86400000
+
+# RabbitMQ Configuration
+spring.rabbitmq.host=<%= @cluster_servers[0] %>
+spring.rabbitmq.port=<%= @fileprocessing::params::rabbitmq_port %>
+spring.rabbitmq.username=<%= @fileprocessing::params::rabbitmq_user %>
+spring.rabbitmq.password=<%= @rabbitmq_password['password'] %>
+spring.rabbitmq.virtual-host=<%= @fileprocessing::params::rabbitmq_vhost %>
+
+# RabbitMQ HA Configuration - Connection to all cluster nodes
+spring.rabbitmq.addresses=<%= @cluster_servers.map{|s| "#{s}:#{@fileprocessing::params::rabbitmq_port}"}.join(',') %>
+
+# Publisher Confirms and Returns
+spring.rabbitmq.publisher-confirm-type=correlated
+spring.rabbitmq.publisher-returns=true
+
+# Redis Configuration with Sentinel
+spring.data.redis.sentinel.master=<%= @fileprocessing::params::redis_master_name %>
+spring.data.redis.sentinel.nodes=<%= @cluster_servers.map{|s| "#{s}:#{@fileprocessing::params::redis_sentinel_port}"}.join(',') %>
+spring.data.redis.password=<%= @redis_password['password'] %>
+spring.data.redis.timeout=2000ms
+
+# Redis Connection Pool
+spring.data.redis.lettuce.pool.max-active=8
+spring.data.redis.lettuce.pool.max-idle=8
+spring.data.redis.lettuce.pool.min-idle=2
+
+# Keycloak OAuth2 Configuration
+spring.security.oauth2.resourceserver.jwt.issuer-uri=http://server4:8180/realms/file-processing
+
+# Virtual Threads (Java 21)
+spring.threads.virtual.enabled=true
+
+# Logging
+logging.level.root=INFO
+logging.level.de.kisters.hmt.cloud=DEBUG
+logging.file.name=<%= @fileprocessing::params::log_dir %>/upload-service.log
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %msg%n
+logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+
+# Actuator
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=always

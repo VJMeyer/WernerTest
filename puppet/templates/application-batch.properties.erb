@@ -1,0 +1,32 @@
+# Batch Processor Configuration
+spring.application.name=batch-processor
+
+# RabbitMQ Configuration
+spring.rabbitmq.host=<%= @cluster_servers[0] %>
+spring.rabbitmq.port=<%= @fileprocessing::params::rabbitmq_port %>
+spring.rabbitmq.username=<%= @fileprocessing::params::rabbitmq_user %>
+spring.rabbitmq.password=<%= @rabbitmq_password['password'] %>
+spring.rabbitmq.virtual-host=<%= @fileprocessing::params::rabbitmq_vhost %>
+
+# RabbitMQ HA Configuration - Connection to all cluster nodes
+spring.rabbitmq.addresses=<%= @cluster_servers.map{|s| "#{s}:#{@fileprocessing::params::rabbitmq_port}"}.join(',') %>
+
+# Consumer Configuration
+spring.rabbitmq.listener.simple.acknowledge-mode=manual
+spring.rabbitmq.listener.simple.prefetch=1
+spring.rabbitmq.listener.simple.retry.enabled=true
+spring.rabbitmq.listener.simple.retry.max-attempts=3
+
+# Batch File Configuration
+batch.output-dir=<%= @fileprocessing::params::app_home %>/batch-output
+batch.wiski-bat-path=/path/to/wiskBat  # Configure this for your environment
+
+# Virtual Threads (Java 21)
+spring.threads.virtual.enabled=true
+
+# Logging
+logging.level.root=INFO
+logging.level.de.kisters.hmt.cloud=DEBUG
+logging.file.name=<%= @fileprocessing::params::log_dir %>/batch-processor.log
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %msg%n
+logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n

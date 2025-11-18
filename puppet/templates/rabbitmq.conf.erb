@@ -1,0 +1,43 @@
+# RabbitMQ Configuration for File Processing System
+# Server: <%= @server_id %>
+
+# Networking
+listeners.tcp.default = <%= @fileprocessing::params::rabbitmq_port %>
+
+# Clustering
+cluster_formation.peer_discovery_backend = rabbit_peer_discovery_classic_config
+cluster_formation.classic_config.nodes.1 = rabbit@<%= @cluster_servers[0] %>
+cluster_formation.classic_config.nodes.2 = rabbit@<%= @cluster_servers[1] %>
+cluster_formation.classic_config.nodes.3 = rabbit@<%= @cluster_servers[2] %>
+
+# Cluster name
+cluster_name = <%= @fileprocessing::params::rabbitmq_cluster_name %>
+
+# High Availability
+# Queues are mirrored across all nodes by policy set via rabbitmqctl
+
+# Management Plugin
+management.tcp.port = <%= @fileprocessing::params::rabbitmq_management_port %>
+management.load_definitions = /etc/rabbitmq/definitions.json
+
+# Logging
+log.file.level = info
+log.console = true
+log.console.level = info
+
+# Memory and Disk
+vm_memory_high_watermark.relative = 0.6
+disk_free_limit.absolute = 50GB
+
+# Connection and Channel Limits
+channel_max = 2048
+heartbeat = 60
+
+# Message Store
+queue_index_embed_msgs_below = 4096
+
+# Networking Tuning
+tcp_listen_options.backlog = 128
+tcp_listen_options.nodelay = true
+tcp_listen_options.linger.on = true
+tcp_listen_options.linger.timeout = 0

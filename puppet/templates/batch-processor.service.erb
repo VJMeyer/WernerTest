@@ -1,0 +1,26 @@
+[Unit]
+Description=File Processing Batch Processor
+After=network.target rabbitmq-server.service
+Wants=rabbitmq-server.service
+
+[Service]
+Type=simple
+User=<%= @fileprocessing::params::app_user %>
+Group=<%= @fileprocessing::params::app_group %>
+WorkingDirectory=<%= @fileprocessing::params::app_home %>/batch-processor
+
+Environment="JAVA_HOME=/usr/lib/jvm/java-<%= @fileprocessing::params::java_version %>-openjdk"
+Environment="JAVA_OPTS=-Xms256m -Xmx1024m -XX:+UseG1GC -XX:+EnableDynamicAgentLoading"
+
+ExecStart=/usr/bin/java $JAVA_OPTS \
+  -jar <%= @fileprocessing::params::batch_processor_jar %> \
+  --spring.config.location=<%= @fileprocessing::params::app_home %>/batch-processor/application.properties
+
+StandardOutput=append:<%= @fileprocessing::params::log_dir %>/batch-processor.log
+StandardError=append:<%= @fileprocessing::params::log_dir %>/batch-processor.log
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

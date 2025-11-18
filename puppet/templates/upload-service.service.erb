@@ -1,0 +1,26 @@
+[Unit]
+Description=File Processing Upload Service
+After=network.target rabbitmq-server.service redis.service
+Wants=rabbitmq-server.service redis.service
+
+[Service]
+Type=simple
+User=<%= @fileprocessing::params::app_user %>
+Group=<%= @fileprocessing::params::app_group %>
+WorkingDirectory=<%= @fileprocessing::params::app_home %>/upload-service
+
+Environment="JAVA_HOME=/usr/lib/jvm/java-<%= @fileprocessing::params::java_version %>-openjdk"
+Environment="JAVA_OPTS=-Xms512m -Xmx2048m -XX:+UseG1GC -XX:+EnableDynamicAgentLoading"
+
+ExecStart=/usr/bin/java $JAVA_OPTS \
+  -jar <%= @fileprocessing::params::upload_service_jar %> \
+  --spring.config.location=<%= @fileprocessing::params::app_home %>/upload-service/application.properties
+
+StandardOutput=append:<%= @fileprocessing::params::log_dir %>/upload-service.log
+StandardError=append:<%= @fileprocessing::params::log_dir %>/upload-service.log
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

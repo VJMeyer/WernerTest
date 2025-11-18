@@ -1,0 +1,7 @@
+---
+# Hiera data for Server 1 (Application Cluster - Master)
+
+fileprocessing::role: 'app_cluster'
+fileprocessing::server_id: 1
+
+# This server is the master for both RabbitMQ and Redis

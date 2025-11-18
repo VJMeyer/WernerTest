@@ -1,0 +1,5 @@
+# System limits for fileprocessing user
+<%= @fileprocessing::params::app_user %> soft nofile 65536
+<%= @fileprocessing::params::app_user %> hard nofile 65536
+<%= @fileprocessing::params::app_user %> soft nproc 4096
+<%= @fileprocessing::params::app_user %> hard nproc 4096

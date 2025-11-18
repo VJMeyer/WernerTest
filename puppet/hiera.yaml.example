@@ -1,0 +1,29 @@
+# Example hiera.yaml configuration
+# Copy this to /etc/puppetlabs/puppet/hiera.yaml
+
+---
+version: 5
+
+defaults:
+  datadir: /etc/puppetlabs/code/environments/production/data
+  data_hash: yaml_data
+
+hierarchy:
+  # Per-node data (highest priority)
+  - name: "Per-node data"
+    path: "%{trusted.certname}.yaml"
+
+  # Common data for all nodes (lowest priority)
+  - name: "Common data"
+    path: "common.yaml"
+
+# Alternative hierarchy using facts:
+# hierarchy:
+#   - name: "Per-node data by hostname"
+#     path: "%{facts.hostname}.yaml"
+#
+#   - name: "Per-role data"
+#     path: "role_%{lookup('fileprocessing::role')}.yaml"
+#
+#   - name: "Common data"
+#     path: "common.yaml"

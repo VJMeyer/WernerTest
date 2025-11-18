@@ -1,0 +1,7 @@
+---
+# Hiera data for Server 2 (Application Cluster - Replica)
+
+fileprocessing::role: 'app_cluster'
+fileprocessing::server_id: 2
+
+# This server joins the RabbitMQ cluster and runs as Redis replica

@@ -1,0 +1,53 @@
+# Example site.pp for Puppet Master
+# Copy this to /etc/puppetlabs/code/environments/production/manifests/site.pp
+# and update with your actual server names
+
+# Server 1 - Application Cluster Master
+node 'server1.example.com', 'server1' {
+  class { 'fileprocessing':
+    role              => 'app_cluster',
+    server_id         => 1,
+    cluster_servers   => lookup('fileprocessing::cluster_servers'),
+    rabbitmq_password => lookup('fileprocessing::rabbitmq_password'),
+    redis_password    => lookup('fileprocessing::redis_password'),
+    nfs_server        => lookup('fileprocessing::nfs_server', Optional[String], undef),
+    nfs_export        => lookup('fileprocessing::nfs_export', Optional[String], undef),
+  }
+}
+
+# Server 2 - Application Cluster Node
+node 'server2.example.com', 'server2' {
+  class { 'fileprocessing':
+    role              => 'app_cluster',
+    server_id         => 2,
+    cluster_servers   => lookup('fileprocessing::cluster_servers'),
+    rabbitmq_password => lookup('fileprocessing::rabbitmq_password'),
+    redis_password    => lookup('fileprocessing::redis_password'),
+    nfs_server        => lookup('fileprocessing::nfs_server', Optional[String], undef),
+    nfs_export        => lookup('fileprocessing::nfs_export', Optional[String], undef),
+  }
+}
+
+# Server 3 - Application Cluster Node
+node 'server3.example.com', 'server3' {
+  class { 'fileprocessing':
+    role              => 'app_cluster',
+    server_id         => 3,
+    cluster_servers   => lookup('fileprocessing::cluster_servers'),
+    rabbitmq_password => lookup('fileprocessing::rabbitmq_password'),
+    redis_password    => lookup('fileprocessing::redis_password'),
+    nfs_server        => lookup('fileprocessing::nfs_server', Optional[String], undef),
+    nfs_export        => lookup('fileprocessing::nfs_export', Optional[String], undef),
+  }
+}
+
+# Server 4 - Keycloak Authentication Server
+node 'server4.example.com', 'server4' {
+  class { 'fileprocessing':
+    role                    => 'keycloak',
+    server_id               => 4,
+    cluster_servers         => [],
+    keycloak_admin_password => lookup('fileprocessing::keycloak_admin_password'),
+    postgres_password       => lookup('fileprocessing::postgres_password'),
+  }
+}

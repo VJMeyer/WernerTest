@@ -1,0 +1,16 @@
+[Unit]
+Description=Keycloak Authentication Server
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=<%= @fileprocessing::params::app_home %>/keycloak
+ExecStart=/usr/local/bin/docker-compose up -d
+ExecStop=/usr/local/bin/docker-compose down
+User=<%= @fileprocessing::params::app_user %>
+Group=<%= @fileprocessing::params::app_group %>
+
+[Install]
+WantedBy=multi-user.target

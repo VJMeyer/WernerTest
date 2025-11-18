@@ -1,0 +1,7 @@
+---
+# Hiera data for Server 4 (Keycloak Server)
+
+fileprocessing::role: 'keycloak'
+fileprocessing::server_id: 4
+
+# This server runs Keycloak for authentication
