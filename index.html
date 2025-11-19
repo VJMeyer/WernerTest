@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OData Metadata Endpoint Reader</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>OData Metadata Endpoint Reader</h1>
+            <p class="subtitle">Parse, explore, and interact with OData services</p>
+        </header>
+
+        <div class="panel">
+            <h2>Service Connection</h2>
+            <div class="form-group">
+                <label for="serviceUrl">OData Service URL:</label>
+                <input type="text" id="serviceUrl" placeholder="https://services.odata.org/V4/TripPinService"
+                       value="https://services.odata.org/V4/TripPinService">
+                <button id="loadMetadata" class="btn btn-primary">Load Metadata</button>
+            </div>
+            <div id="connectionStatus" class="status-message"></div>
+        </div>
+
+        <div class="panel" id="metadataPanel" style="display: none;">
+            <h2>Service Metadata</h2>
+            <div class="metadata-info">
+                <div class="info-group">
+                    <strong>Service Version:</strong> <span id="serviceVersion">-</span>
+                </div>
+                <div class="info-group">
+                    <strong>Namespaces:</strong> <span id="namespaces">-</span>
+                </div>
+                <div class="info-group">
+                    <strong>Entity Sets:</strong> <span id="entitySetCount">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" id="entityPanel" style="display: none;">
+            <h2>Entity Explorer</h2>
+            <div class="form-group">
+                <label for="entitySetSelect">Select Entity Set:</label>
+                <select id="entitySetSelect" class="form-control">
+                    <option value="">-- Select an Entity Set --</option>
+                </select>
+            </div>
+
+            <div id="entityDetails" style="display: none;">
+                <h3>Entity Properties</h3>
+                <div id="propertiesList"></div>
+
+                <h3>Query Builder</h3>
+                <div class="query-builder">
+                    <div class="form-group">
+                        <label for="filterProperty">Filter by Property:</label>
+                        <select id="filterProperty" class="form-control">
+                            <option value="">-- Select Property --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="filterValueGroup" style="display: none;">
+                        <label for="filterValue">Value:</label>
+                        <input type="text" id="filterValue" class="form-control">
+                        <select id="filterEnum" class="form-control" style="display: none;"></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topCount">Top (limit):</label>
+                        <input type="number" id="topCount" class="form-control" value="10" min="1" max="1000">
+                    </div>
+
+                    <button id="executeQuery" class="btn btn-primary">Execute Query</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" id="functionsPanel" style="display: none;">
+            <h2>Functions & Actions</h2>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="functions">Functions</button>
+                <button class="tab-btn" data-tab="actions">Actions</button>
+            </div>
+
+            <div class="tab-content" id="functionsTab">
+                <div class="form-group">
+                    <label for="functionSelect">Select Function:</label>
+                    <select id="functionSelect" class="form-control">
+                        <option value="">-- Select a Function --</option>
+                    </select>
+                </div>
+                <div id="functionDetails" style="display: none;">
+                    <h4>Parameters</h4>
+                    <div id="functionParams"></div>
+                    <button id="executeFunction" class="btn btn-primary">Execute Function</button>
+                </div>
+            </div>
+
+            <div class="tab-content" id="actionsTab" style="display: none;">
+                <div class="form-group">
+                    <label for="actionSelect">Select Action:</label>
+                    <select id="actionSelect" class="form-control">
+                        <option value="">-- Select an Action --</option>
+                    </select>
+                </div>
+                <div id="actionDetails" style="display: none;">
+                    <h4>Parameters</h4>
+                    <div id="actionParams"></div>
+                    <button id="executeAction" class="btn btn-primary">Execute Action</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" id="batchPanel" style="display: none;">
+            <h2>Batch Operations</h2>
+            <div class="batch-builder">
+                <div class="form-group">
+                    <label>Batch Requests</label>
+                    <div id="batchRequests"></div>
+                    <button id="addBatchRequest" class="btn btn-secondary">Add Request</button>
+                </div>
+                <div class="batch-actions">
+                    <button id="executeBatch" class="btn btn-primary">Execute Batch</button>
+                    <button id="clearBatch" class="btn btn-secondary">Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" id="resultsPanel" style="display: none;">
+            <h2>Results</h2>
+            <div class="result-actions">
+                <button id="copyResults" class="btn btn-secondary">Copy to Clipboard</button>
+                <button id="downloadResults" class="btn btn-secondary">Download JSON</button>
+            </div>
+            <pre id="resultsContent"></pre>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
