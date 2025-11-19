@@ -4,11 +4,39 @@
  */
 
 class ODataService {
-    constructor(serviceUrl) {
+    constructor(serviceUrl, authService = null) {
         this.serviceUrl = serviceUrl.endsWith('/') ? serviceUrl.slice(0, -1) : serviceUrl;
         this.metadata = null;
         this.entityTypes = new Map();
+        this.complexTypes = new Map();
         this.entitySets = new Map();
+        this.authService = authService;
+    }
+
+    /**
+     * Set authentication service
+     */
+    setAuthService(authService) {
+        this.authService = authService;
+    }
+
+    /**
+     * Get request headers with authentication
+     */
+    getHeaders(contentType = 'application/json') {
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': contentType
+        };
+
+        if (this.authService) {
+            const authHeader = this.authService.getAuthHeader();
+            if (authHeader) {
+                headers['Authorization'] = authHeader;
+            }
+        }
+
+        return headers;
     }
 
     /**
@@ -48,6 +76,36 @@ class ODataService {
      * Parse the metadata XML document
      */
     parseMetadata(xmlDoc) {
+        // Parse Complex Types first (so they're available for entity types)
+        const complexTypeElements = xmlDoc.querySelectorAll('ComplexType');
+        complexTypeElements.forEach(complexType => {
+            const name = complexType.getAttribute('Name');
+            const namespace = complexType.parentElement.getAttribute('Namespace');
+            const fullName = `${namespace}.${name}`;
+
+            const properties = [];
+
+            // Parse Properties
+            complexType.querySelectorAll('Property').forEach(prop => {
+                properties.push({
+                    name: prop.getAttribute('Name'),
+                    type: prop.getAttribute('Type'),
+                    nullable: prop.getAttribute('Nullable') !== 'false',
+                    maxLength: prop.getAttribute('MaxLength'),
+                    precision: prop.getAttribute('Precision'),
+                    scale: prop.getAttribute('Scale')
+                });
+            });
+
+            this.complexTypes.set(fullName, {
+                name,
+                fullName,
+                namespace,
+                properties,
+                isComplexType: true
+            });
+        });
+
         // Parse EntityTypes
         const entityTypeElements = xmlDoc.querySelectorAll('EntityType');
         entityTypeElements.forEach(entityType => {
@@ -60,13 +118,15 @@ class ODataService {
 
             // Parse Properties
             entityType.querySelectorAll('Property').forEach(prop => {
+                const propType = prop.getAttribute('Type');
                 properties.push({
                     name: prop.getAttribute('Name'),
-                    type: prop.getAttribute('Type'),
+                    type: propType,
                     nullable: prop.getAttribute('Nullable') !== 'false',
                     maxLength: prop.getAttribute('MaxLength'),
                     precision: prop.getAttribute('Precision'),
-                    scale: prop.getAttribute('Scale')
+                    scale: prop.getAttribute('Scale'),
+                    isComplexType: this.complexTypes.has(propType)
                 });
             });
 
@@ -304,6 +364,143 @@ class ODataService {
             });
             return keyObj;
         }
+    }
+
+    /**
+     * Get complex type information
+     */
+    getComplexType(complexTypeName) {
+        return this.complexTypes.get(complexTypeName);
+    }
+
+    /**
+     * Create a new entity (POST)
+     */
+    async createEntity(entitySetName, entityData) {
+        try {
+            const url = `${this.serviceUrl}/${entitySetName}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: this.getHeaders(),
+                body: JSON.stringify(entityData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to create entity: ${response.statusText} - ${errorText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error creating entity:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update an entity (PATCH)
+     */
+    async updateEntity(entitySetName, keyValue, entityData, entityTypeInfo) {
+        try {
+            // Build key predicate
+            let keyPredicate;
+            if (entityTypeInfo.keys.length === 1) {
+                const key = entityTypeInfo.keys[0];
+                const keyProp = entityTypeInfo.properties.find(p => p.name === key);
+                const isString = keyProp?.type?.includes('String');
+                keyPredicate = isString ? `'${keyValue}'` : keyValue;
+            } else {
+                const keyParts = entityTypeInfo.keys.map(key => {
+                    const keyProp = entityTypeInfo.properties.find(p => p.name === key);
+                    const isString = keyProp?.type?.includes('String');
+                    const value = typeof keyValue === 'object' ? keyValue[key] : keyValue;
+                    return `${key}=${isString ? `'${value}'` : value}`;
+                });
+                keyPredicate = keyParts.join(',');
+            }
+
+            const url = `${this.serviceUrl}/${entitySetName}(${keyPredicate})`;
+
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: this.getHeaders(),
+                body: JSON.stringify(entityData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to update entity: ${response.statusText} - ${errorText}`);
+            }
+
+            // PATCH may return 204 No Content or updated entity
+            if (response.status === 204) {
+                return entityData;
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating entity:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete an entity (DELETE)
+     */
+    async deleteEntity(entitySetName, keyValue, entityTypeInfo) {
+        try {
+            // Build key predicate
+            let keyPredicate;
+            if (entityTypeInfo.keys.length === 1) {
+                const key = entityTypeInfo.keys[0];
+                const keyProp = entityTypeInfo.properties.find(p => p.name === key);
+                const isString = keyProp?.type?.includes('String');
+                keyPredicate = isString ? `'${keyValue}'` : keyValue;
+            } else {
+                const keyParts = entityTypeInfo.keys.map(key => {
+                    const keyProp = entityTypeInfo.properties.find(p => p.name === key);
+                    const isString = keyProp?.type?.includes('String');
+                    const value = typeof keyValue === 'object' ? keyValue[key] : keyValue;
+                    return `${key}=${isString ? `'${value}'` : value}`;
+                });
+                keyPredicate = keyParts.join(',');
+            }
+
+            const url = `${this.serviceUrl}/${entitySetName}(${keyPredicate})`;
+
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: this.getHeaders()
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to delete entity: ${response.statusText} - ${errorText}`);
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error deleting entity:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Check if property type is complex
+     */
+    isComplexType(typeName) {
+        return this.complexTypes.has(typeName);
+    }
+
+    /**
+     * Check if property type is primitive
+     */
+    isPrimitiveType(typeName) {
+        if (!typeName) return true;
+        return typeName.startsWith('Edm.') || typeName === 'String' || typeName === 'Int32' ||
+               typeName === 'Boolean' || typeName === 'DateTime' || typeName === 'Decimal' ||
+               typeName === 'Double' || typeName === 'Single' || typeName === 'Guid';
     }
 }
 

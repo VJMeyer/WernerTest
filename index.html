@@ -9,7 +9,15 @@
 <body>
     <div class="app-container">
         <header>
-            <h1>OData Service Explorer</h1>
+            <div class="header-top">
+                <h1>OData Service Explorer</h1>
+                <div class="auth-panel">
+                    <button id="authConfigBtn" class="icon-btn" title="Authentication Settings">⚙️</button>
+                    <span id="userInfo" class="user-info hidden"></span>
+                    <button id="loginBtn" class="auth-btn">Login</button>
+                    <button id="logoutBtn" class="auth-btn hidden">Logout</button>
+                </div>
+            </div>
             <div class="connection-panel">
                 <input type="text" id="serviceUrl" placeholder="Enter OData Service URL (e.g., https://services.odata.org/V4/TripPinServiceRW)" />
                 <button id="connectBtn">Connect</button>
@@ -39,6 +47,7 @@
                         <div class="grid-header">
                             <h2 id="gridTitle">Select an entity set</h2>
                             <div class="grid-controls">
+                                <button id="createEntityBtn" class="action-btn create-btn" disabled>➕ New</button>
                                 <button id="showFiltersBtn" class="show-filters-btn" disabled>🔍 Filters</button>
                                 <button id="refreshBtn" disabled>Refresh</button>
                                 <span id="recordCount"></span>
@@ -119,6 +128,12 @@
                         <div class="detail-header">
                             <button id="backBtn" class="back-button">← Back</button>
                             <h2 id="detailTitle">Detail View</h2>
+                            <div class="detail-actions hidden" id="detailActions">
+                                <button id="editBtn" class="action-btn edit-btn">✏️ Edit</button>
+                                <button id="saveBtn" class="action-btn save-btn hidden">💾 Save</button>
+                                <button id="cancelEditBtn" class="action-btn cancel-btn hidden">✖️ Cancel</button>
+                                <button id="deleteBtn" class="action-btn delete-btn">🗑️ Delete</button>
+                            </div>
                         </div>
                         <div id="detailContainer" class="detail-container">
                             <p class="placeholder">Select a row from the grid to view details</p>
@@ -129,6 +144,51 @@
         </div>
     </div>
 
+    <!-- Authentication Configuration Modal -->
+    <div id="authConfigModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Authentication Configuration</h2>
+                <button class="modal-close" id="authConfigCloseBtn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="keycloakRealm">Keycloak Realm</label>
+                    <input type="text" id="keycloakRealm" placeholder="e.g., myrealm" />
+                </div>
+                <div class="form-group">
+                    <label for="keycloakClientId">Client ID</label>
+                    <input type="text" id="keycloakClientId" placeholder="e.g., odata-explorer" />
+                </div>
+                <div class="form-group">
+                    <label for="keycloakBaseUrl">Keycloak Base URL (Optional)</label>
+                    <input type="text" id="keycloakBaseUrl" placeholder="Leave empty to use same domain" />
+                    <small>If empty, will use current domain (e.g., https://yourdomain.com)</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveAuthConfigBtn" class="primary-btn">Save Configuration</button>
+                <button id="cancelAuthConfigBtn" class="secondary-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complex Type Modal -->
+    <div id="complexTypeModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="complexTypeTitle">Complex Type</h2>
+                <button class="modal-close" id="complexTypeCloseBtn">×</button>
+            </div>
+            <div class="modal-body" id="complexTypeBody">
+                <!-- Complex type fields will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button id="saveComplexTypeBtn" class="primary-btn">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="spinner"></div>
@@ -136,6 +196,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="auth.js"></script>
     <script src="odataService.js"></script>
     <script src="app.js"></script>
 </body>
