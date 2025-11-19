@@ -6,8 +6,10 @@
 class ODataExplorer {
     constructor() {
         this.odataService = null;
+        this.authService = null;
         this.currentEntitySet = null;
         this.currentEntity = null;
+        this.currentEntityTypeInfo = null;
         this.navigationStack = [];
 
         // Pagination state
@@ -19,7 +21,33 @@ class ODataExplorer {
         // Filter state
         this.activeFilters = [];
 
+        // Edit mode state
+        this.isEditMode = false;
+        this.isCreateMode = false;
+        this.originalEntityData = null;
+
+        // Complex type state
+        this.currentComplexTypeData = null;
+        this.currentComplexTypeProperty = null;
+
+        this.initializeAuthentication();
         this.initializeEventListeners();
+    }
+
+    /**
+     * Initialize authentication
+     */
+    initializeAuthentication() {
+        // Load auth config from localStorage
+        const authConfig = localStorage.getItem('keycloak_config');
+        if (authConfig) {
+            const config = JSON.parse(authConfig);
+            this.authService = new AuthService();
+            this.authService.initialize(config);
+
+            // Update UI based on auth state
+            this.updateAuthUI();
+        }
     }
 
     /**
@@ -122,6 +150,61 @@ class ODataExplorer {
                 this.loadEntitySet(this.currentEntitySet);
             }
         });
+
+        // Authentication event listeners
+        document.getElementById('authConfigBtn').addEventListener('click', () => {
+            this.showAuthConfigModal();
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            this.login();
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            this.logout();
+        });
+
+        document.getElementById('authConfigCloseBtn').addEventListener('click', () => {
+            this.hideAuthConfigModal();
+        });
+
+        document.getElementById('saveAuthConfigBtn').addEventListener('click', () => {
+            this.saveAuthConfig();
+        });
+
+        document.getElementById('cancelAuthConfigBtn').addEventListener('click', () => {
+            this.hideAuthConfigModal();
+        });
+
+        // CRUD event listeners
+        document.getElementById('createEntityBtn').addEventListener('click', () => {
+            this.createNewEntity();
+        });
+
+        document.getElementById('editBtn').addEventListener('click', () => {
+            this.enterEditMode();
+        });
+
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            this.saveEntity();
+        });
+
+        document.getElementById('cancelEditBtn').addEventListener('click', () => {
+            this.cancelEdit();
+        });
+
+        document.getElementById('deleteBtn').addEventListener('click', () => {
+            this.deleteEntity();
+        });
+
+        // Complex type modal
+        document.getElementById('complexTypeCloseBtn').addEventListener('click', () => {
+            this.hideComplexTypeModal();
+        });
+
+        document.getElementById('saveComplexTypeBtn').addEventListener('click', () => {
+            this.saveComplexType();
+        });
     }
 
     /**
@@ -138,7 +221,7 @@ class ODataExplorer {
         this.showLoading(true);
 
         try {
-            this.odataService = new ODataService(serviceUrl);
+            this.odataService = new ODataService(serviceUrl, this.authService);
             const metadata = await this.odataService.fetchMetadata();
 
             this.showConnectionStatus('Connected', true);
@@ -147,6 +230,11 @@ class ODataExplorer {
             // Enable buttons
             document.getElementById('refreshBtn').disabled = false;
             document.getElementById('showFiltersBtn').disabled = false;
+
+            // Enable create button if authenticated
+            if (this.isAuthenticated()) {
+                document.getElementById('createEntityBtn').disabled = false;
+            }
         } catch (error) {
             this.showConnectionStatus(`Error: ${error.message}`, false);
             console.error('Connection error:', error);
@@ -394,14 +482,35 @@ class ODataExplorer {
     /**
      * Build detail form
      */
-    buildDetailForm(entity, entityTypeInfo, entitySetName) {
+    buildDetailForm(entity, entityTypeInfo, entitySetName, isNewEntity = false) {
         const detailContainer = document.getElementById('detailContainer');
         detailContainer.innerHTML = '';
 
         // Update title
-        const keyValue = this.odataService.extractKeyValue(entity, entityTypeInfo);
-        document.getElementById('detailTitle').textContent =
-            `${entitySetName} - ${typeof keyValue === 'object' ? JSON.stringify(keyValue) : keyValue}`;
+        if (!isNewEntity) {
+            const keyValue = this.odataService.extractKeyValue(entity, entityTypeInfo);
+            document.getElementById('detailTitle').textContent =
+                `${entitySetName} - ${typeof keyValue === 'object' ? JSON.stringify(keyValue) : keyValue}`;
+        } else {
+            document.getElementById('detailTitle').textContent = `Create New ${entitySetName}`;
+        }
+
+        // Show action buttons
+        document.getElementById('detailActions').classList.remove('hidden');
+
+        // Update action buttons based on mode and authentication
+        if (isNewEntity || this.isEditMode) {
+            document.getElementById('editBtn').classList.add('hidden');
+            document.getElementById('saveBtn').classList.remove('hidden');
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            document.getElementById('deleteBtn').classList.add('hidden');
+        } else {
+            const isAuth = this.isAuthenticated();
+            document.getElementById('editBtn').classList.toggle('hidden', !isAuth);
+            document.getElementById('saveBtn').classList.add('hidden');
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('deleteBtn').classList.toggle('hidden', !isAuth);
+        }
 
         // Create form
         const form = document.createElement('div');
@@ -413,14 +522,14 @@ class ODataExplorer {
         propsSection.innerHTML = '<h3>Properties</h3>';
 
         entityTypeInfo.properties.forEach(prop => {
-            const formGroup = this.createFormField(prop, entity[prop.name], entityTypeInfo);
+            const formGroup = this.createFormField(prop, entity[prop.name], entityTypeInfo, isNewEntity || this.isEditMode);
             propsSection.appendChild(formGroup);
         });
 
         form.appendChild(propsSection);
 
-        // Navigation Properties Section
-        if (entityTypeInfo.navigationProperties && entityTypeInfo.navigationProperties.length > 0) {
+        // Navigation Properties Section (only show in view mode, not edit/create)
+        if (!isNewEntity && !this.isEditMode && entityTypeInfo.navigationProperties && entityTypeInfo.navigationProperties.length > 0) {
             const navSection = document.createElement('div');
             navSection.className = 'form-section';
             navSection.innerHTML = '<h3>Related Data</h3>';
@@ -444,7 +553,7 @@ class ODataExplorer {
     /**
      * Create a form field based on property metadata
      */
-    createFormField(property, value, entityTypeInfo) {
+    createFormField(property, value, entityTypeInfo, isEditable = false) {
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
 
@@ -460,8 +569,38 @@ class ODataExplorer {
         label.textContent = property.name;
         formGroup.appendChild(label);
 
-        const typeCategory = this.odataService.getPropertyTypeCategory(property.type);
+        // Handle complex types
+        if (property.isComplexType) {
+            const complexTypeInfo = this.odataService.getComplexType(property.type);
 
+            const complexField = document.createElement('div');
+            complexField.className = 'complex-type-field';
+
+            if (value && typeof value === 'object') {
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(value, null, 2);
+                complexField.appendChild(pre);
+            } else {
+                complexField.innerHTML = '<em>No data</em>';
+            }
+
+            formGroup.appendChild(complexField);
+
+            if (isEditable && complexTypeInfo) {
+                const editButton = document.createElement('button');
+                editButton.className = 'complex-type-button';
+                editButton.textContent = 'Edit';
+                editButton.type = 'button';
+                editButton.addEventListener('click', () => {
+                    this.showComplexTypeModal(property.name, complexTypeInfo, value);
+                });
+                formGroup.appendChild(editButton);
+            }
+
+            return formGroup;
+        }
+
+        const typeCategory = this.odataService.getPropertyTypeCategory(property.type);
         let input;
 
         switch (typeCategory) {
@@ -471,18 +610,21 @@ class ODataExplorer {
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.checked = value === true;
-                checkbox.disabled = true;
+                checkbox.disabled = !isEditable;
                 const checkboxLabel = document.createElement('span');
                 checkboxLabel.textContent = value ? 'True' : 'False';
                 input.appendChild(checkbox);
                 input.appendChild(checkboxLabel);
+                checkbox.addEventListener('change', () => {
+                    checkboxLabel.textContent = checkbox.checked ? 'True' : 'False';
+                });
                 break;
 
             case 'number':
                 input = document.createElement('input');
                 input.type = 'number';
                 input.value = value !== null && value !== undefined ? value : '';
-                input.readOnly = true;
+                input.readOnly = !isEditable;
                 break;
 
             case 'datetime':
@@ -496,7 +638,7 @@ class ODataExplorer {
                         input.value = value;
                     }
                 }
-                input.readOnly = true;
+                input.readOnly = !isEditable;
                 break;
 
             default:
@@ -504,12 +646,12 @@ class ODataExplorer {
                 if (property.maxLength && property.maxLength > 200) {
                     input = document.createElement('textarea');
                     input.value = value !== null && value !== undefined ? value : '';
-                    input.readOnly = true;
+                    input.readOnly = !isEditable;
                 } else {
                     input = document.createElement('input');
                     input.type = 'text';
                     input.value = value !== null && value !== undefined ? value : '';
-                    input.readOnly = true;
+                    input.readOnly = !isEditable;
                 }
                 break;
         }
@@ -1079,6 +1221,570 @@ class ODataExplorer {
         ellipsis.className = 'page-number ellipsis';
         ellipsis.textContent = '...';
         container.appendChild(ellipsis);
+    }
+
+    // ========== Authentication Methods ==========
+
+    /**
+     * Check if user is authenticated
+     */
+    isAuthenticated() {
+        return this.authService && this.authService.isAuthenticated();
+    }
+
+    /**
+     * Update authentication UI
+     */
+    updateAuthUI() {
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userInfo = document.getElementById('userInfo');
+
+        if (this.isAuthenticated()) {
+            loginBtn.classList.add('hidden');
+            logoutBtn.classList.remove('hidden');
+
+            const user = this.authService.getUserInfo();
+            if (user) {
+                userInfo.textContent = user.preferred_username || user.name || 'User';
+                userInfo.classList.remove('hidden');
+            }
+
+            // Enable create button if service is connected
+            if (this.odataService) {
+                document.getElementById('createEntityBtn').disabled = false;
+            }
+        } else {
+            loginBtn.classList.remove('hidden');
+            logoutBtn.classList.add('hidden');
+            userInfo.classList.add('hidden');
+            document.getElementById('createEntityBtn').disabled = true;
+        }
+    }
+
+    /**
+     * Show authentication configuration modal
+     */
+    showAuthConfigModal() {
+        const authConfig = localStorage.getItem('keycloak_config');
+        if (authConfig) {
+            const config = JSON.parse(authConfig);
+            document.getElementById('keycloakRealm').value = config.realm || '';
+            document.getElementById('keycloakClientId').value = config.clientId || '';
+            document.getElementById('keycloakBaseUrl').value = config.baseUrl || '';
+        }
+
+        document.getElementById('authConfigModal').classList.remove('hidden');
+    }
+
+    /**
+     * Hide authentication configuration modal
+     */
+    hideAuthConfigModal() {
+        document.getElementById('authConfigModal').classList.add('hidden');
+    }
+
+    /**
+     * Save authentication configuration
+     */
+    saveAuthConfig() {
+        const realm = document.getElementById('keycloakRealm').value.trim();
+        const clientId = document.getElementById('keycloakClientId').value.trim();
+        const baseUrl = document.getElementById('keycloakBaseUrl').value.trim();
+
+        if (!realm || !clientId) {
+            alert('Please enter both Realm and Client ID');
+            return;
+        }
+
+        const config = {
+            realm,
+            clientId,
+            baseUrl: baseUrl || window.location.origin
+        };
+
+        localStorage.setItem('keycloak_config', JSON.stringify(config));
+
+        // Initialize auth service
+        this.authService = new AuthService();
+        this.authService.initialize(config);
+
+        // Update OData service if connected
+        if (this.odataService) {
+            this.odataService.setAuthService(this.authService);
+        }
+
+        this.updateAuthUI();
+        this.hideAuthConfigModal();
+
+        alert('Authentication configuration saved. You can now login.');
+    }
+
+    /**
+     * Login
+     */
+    login() {
+        if (!this.authService) {
+            alert('Please configure authentication first (click the ⚙️ button)');
+            return;
+        }
+
+        this.authService.login();
+    }
+
+    /**
+     * Logout
+     */
+    logout() {
+        if (this.authService) {
+            this.authService.logout();
+        }
+    }
+
+    // ========== CRUD Methods ==========
+
+    /**
+     * Create new entity
+     */
+    createNewEntity() {
+        if (!this.isAuthenticated()) {
+            alert('Please login to create entities');
+            return;
+        }
+
+        if (!this.currentEntitySet) {
+            alert('Please select an entity set first');
+            return;
+        }
+
+        this.isCreateMode = true;
+        this.isEditMode = true;
+
+        const entitySet = this.odataService.getEntitySet(this.currentEntitySet);
+        const entityTypeInfo = entitySet?.entityTypeInfo;
+
+        if (!entityTypeInfo) {
+            alert('Could not load entity type information');
+            return;
+        }
+
+        // Create empty entity with default values
+        const newEntity = {};
+        entityTypeInfo.properties.forEach(prop => {
+            if (!prop.isComplexType) {
+                newEntity[prop.name] = this.getDefaultValue(prop);
+            } else {
+                newEntity[prop.name] = null;
+            }
+        });
+
+        this.currentEntity = { entitySetName: this.currentEntitySet, entity: newEntity, entityTypeInfo };
+        this.buildDetailForm(newEntity, entityTypeInfo, this.currentEntitySet, true);
+
+        // Switch to detail tab
+        this.switchTab('detail');
+
+        // Update action buttons for create mode
+        document.getElementById('detailActions').classList.remove('hidden');
+        document.getElementById('editBtn').classList.add('hidden');
+        document.getElementById('saveBtn').classList.remove('hidden');
+        document.getElementById('cancelEditBtn').classList.remove('hidden');
+        document.getElementById('deleteBtn').classList.add('hidden');
+
+        document.getElementById('detailTitle').textContent = `Create New ${this.currentEntitySet}`;
+    }
+
+    /**
+     * Get default value for a property based on type
+     */
+    getDefaultValue(property) {
+        const typeCategory = this.odataService.getPropertyTypeCategory(property.type);
+
+        switch (typeCategory) {
+            case 'number':
+                return 0;
+            case 'boolean':
+                return false;
+            case 'datetime':
+                return new Date().toISOString();
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * Enter edit mode
+     */
+    enterEditMode() {
+        if (!this.isAuthenticated()) {
+            alert('Please login to edit entities');
+            return;
+        }
+
+        this.isEditMode = true;
+        this.originalEntityData = JSON.parse(JSON.stringify(this.currentEntity.entity));
+
+        // Make all inputs editable
+        const form = document.querySelector('#detailContainer .detail-form');
+        if (form) {
+            form.querySelectorAll('input, textarea, select').forEach(input => {
+                if (input.type !== 'checkbox') {
+                    input.removeAttribute('readonly');
+                } else {
+                    input.removeAttribute('disabled');
+                }
+                input.classList.remove('readonly');
+            });
+        }
+
+        // Update action buttons
+        document.getElementById('editBtn').classList.add('hidden');
+        document.getElementById('saveBtn').classList.remove('hidden');
+        document.getElementById('cancelEditBtn').classList.remove('hidden');
+        document.getElementById('deleteBtn').classList.add('hidden');
+    }
+
+    /**
+     * Cancel edit
+     */
+    cancelEdit() {
+        if (this.isCreateMode) {
+            // Exit create mode and go back to grid
+            this.isCreateMode = false;
+            this.isEditMode = false;
+            this.switchTab('grid');
+            return;
+        }
+
+        this.isEditMode = false;
+
+        // Restore original data
+        if (this.originalEntityData) {
+            this.currentEntity.entity = this.originalEntityData;
+            this.buildDetailForm(
+                this.currentEntity.entity,
+                this.currentEntity.entityTypeInfo,
+                this.currentEntity.entitySetName
+            );
+        }
+
+        this.originalEntityData = null;
+
+        // Update action buttons
+        document.getElementById('editBtn').classList.remove('hidden');
+        document.getElementById('saveBtn').classList.add('hidden');
+        document.getElementById('cancelEditBtn').classList.add('hidden');
+        document.getElementById('deleteBtn').classList.remove('hidden');
+    }
+
+    /**
+     * Save entity (create or update)
+     */
+    async saveEntity() {
+        if (!this.isAuthenticated()) {
+            alert('Please login to save entities');
+            return;
+        }
+
+        this.showLoading(true);
+
+        try {
+            // Collect form data
+            const entityData = this.collectFormData();
+
+            if (this.isCreateMode) {
+                // Create new entity
+                const createdEntity = await this.odataService.createEntity(
+                    this.currentEntitySet,
+                    entityData
+                );
+
+                alert('Entity created successfully!');
+
+                // Exit create mode
+                this.isCreateMode = false;
+                this.isEditMode = false;
+
+                // Refresh grid
+                await this.loadEntitySet(this.currentEntitySet);
+
+                // Switch back to grid
+                this.switchTab('grid');
+            } else {
+                // Update existing entity
+                const keyValue = this.odataService.extractKeyValue(
+                    this.currentEntity.entity,
+                    this.currentEntity.entityTypeInfo
+                );
+
+                await this.odataService.updateEntity(
+                    this.currentEntity.entitySetName,
+                    keyValue,
+                    entityData,
+                    this.currentEntity.entityTypeInfo
+                );
+
+                alert('Entity updated successfully!');
+
+                // Update current entity with new data
+                this.currentEntity.entity = { ...this.currentEntity.entity, ...entityData };
+
+                // Exit edit mode
+                this.isEditMode = false;
+                this.originalEntityData = null;
+
+                // Rebuild form in read-only mode
+                this.buildDetailForm(
+                    this.currentEntity.entity,
+                    this.currentEntity.entityTypeInfo,
+                    this.currentEntity.entitySetName
+                );
+
+                // Refresh grid
+                await this.loadEntitySet(this.currentEntitySet);
+            }
+        } catch (error) {
+            this.showError('Failed to save entity', error);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * Collect form data from inputs
+     */
+    collectFormData() {
+        const form = document.querySelector('#detailContainer .detail-form');
+        const entityData = {};
+
+        if (!form) return entityData;
+
+        const formGroups = form.querySelectorAll('.form-group');
+        formGroups.forEach(group => {
+            const label = group.querySelector('label');
+            if (!label) return;
+
+            const propName = label.textContent.replace(' 🔑', '').replace(' *', '').trim();
+            const input = group.querySelector('input, textarea, select');
+
+            if (!input) return;
+
+            // Skip readonly fields for key properties in update mode (not create mode)
+            if (!this.isCreateMode && group.classList.contains('type-key')) {
+                return;
+            }
+
+            let value;
+            if (input.type === 'checkbox') {
+                value = input.checked;
+            } else if (input.type === 'number') {
+                value = input.value ? parseFloat(input.value) : null;
+            } else if (input.type === 'datetime-local') {
+                value = input.value ? new Date(input.value).toISOString() : null;
+            } else {
+                value = input.value || null;
+            }
+
+            entityData[propName] = value;
+        });
+
+        return entityData;
+    }
+
+    /**
+     * Delete entity
+     */
+    async deleteEntity() {
+        if (!this.isAuthenticated()) {
+            alert('Please login to delete entities');
+            return;
+        }
+
+        const confirmDelete = confirm('Are you sure you want to delete this entity? This action cannot be undone.');
+        if (!confirmDelete) {
+            return;
+        }
+
+        this.showLoading(true);
+
+        try {
+            const keyValue = this.odataService.extractKeyValue(
+                this.currentEntity.entity,
+                this.currentEntity.entityTypeInfo
+            );
+
+            await this.odataService.deleteEntity(
+                this.currentEntity.entitySetName,
+                keyValue,
+                this.currentEntity.entityTypeInfo
+            );
+
+            alert('Entity deleted successfully!');
+
+            // Refresh grid
+            await this.loadEntitySet(this.currentEntitySet);
+
+            // Switch back to grid
+            this.switchTab('grid');
+
+            // Clear detail view
+            this.clearDetailView();
+        } catch (error) {
+            this.showError('Failed to delete entity', error);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    // ========== Complex Type Methods ==========
+
+    /**
+     * Show complex type modal
+     */
+    showComplexTypeModal(propertyName, complexTypeInfo, currentValue) {
+        this.currentComplexTypeProperty = propertyName;
+        this.currentComplexTypeData = currentValue || {};
+
+        document.getElementById('complexTypeTitle').textContent = `Edit ${propertyName}`;
+
+        const modalBody = document.getElementById('complexTypeBody');
+        modalBody.innerHTML = '';
+
+        // Create form for complex type properties
+        complexTypeInfo.properties.forEach(prop => {
+            const formGroup = this.createComplexTypeField(
+                prop,
+                this.currentComplexTypeData[prop.name]
+            );
+            modalBody.appendChild(formGroup);
+        });
+
+        document.getElementById('complexTypeModal').classList.remove('hidden');
+    }
+
+    /**
+     * Create form field for complex type property
+     */
+    createComplexTypeField(property, value) {
+        const formGroup = document.createElement('div');
+        formGroup.className = 'form-group';
+
+        const label = document.createElement('label');
+        label.textContent = property.name;
+        formGroup.appendChild(label);
+
+        const typeCategory = this.odataService.getPropertyTypeCategory(property.type);
+        let input;
+
+        switch (typeCategory) {
+            case 'boolean':
+                input = document.createElement('div');
+                input.className = 'checkbox-group';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = value === true;
+                checkbox.dataset.property = property.name;
+                const checkboxLabel = document.createElement('span');
+                checkboxLabel.textContent = value ? 'True' : 'False';
+                input.appendChild(checkbox);
+                input.appendChild(checkboxLabel);
+                checkbox.addEventListener('change', () => {
+                    checkboxLabel.textContent = checkbox.checked ? 'True' : 'False';
+                });
+                break;
+
+            case 'number':
+                input = document.createElement('input');
+                input.type = 'number';
+                input.value = value !== null && value !== undefined ? value : '';
+                input.dataset.property = property.name;
+                break;
+
+            case 'datetime':
+                input = document.createElement('input');
+                input.type = 'datetime-local';
+                if (value) {
+                    try {
+                        const date = new Date(value);
+                        input.value = date.toISOString().slice(0, 16);
+                    } catch (e) {
+                        input.value = value;
+                    }
+                }
+                input.dataset.property = property.name;
+                break;
+
+            default:
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = value !== null && value !== undefined ? value : '';
+                input.dataset.property = property.name;
+                break;
+        }
+
+        formGroup.appendChild(input);
+        return formGroup;
+    }
+
+    /**
+     * Hide complex type modal
+     */
+    hideComplexTypeModal() {
+        document.getElementById('complexTypeModal').classList.add('hidden');
+        this.currentComplexTypeProperty = null;
+        this.currentComplexTypeData = null;
+    }
+
+    /**
+     * Save complex type
+     */
+    saveComplexType() {
+        const modalBody = document.getElementById('complexTypeBody');
+        const complexTypeData = {};
+
+        modalBody.querySelectorAll('.form-group').forEach(group => {
+            const input = group.querySelector('input, textarea, select');
+            if (!input) return;
+
+            const propName = input.dataset.property;
+            let value;
+
+            if (input.type === 'checkbox') {
+                value = input.checked;
+            } else if (input.type === 'number') {
+                value = input.value ? parseFloat(input.value) : null;
+            } else if (input.type === 'datetime-local') {
+                value = input.value ? new Date(input.value).toISOString() : null;
+            } else {
+                value = input.value || null;
+            }
+
+            complexTypeData[propName] = value;
+        });
+
+        // Update the main form's hidden input or display
+        const mainForm = document.querySelector('#detailContainer .detail-form');
+        if (mainForm) {
+            const complexFieldGroups = mainForm.querySelectorAll('.form-group');
+            complexFieldGroups.forEach(group => {
+                const label = group.querySelector('label');
+                if (label && label.textContent.trim() === this.currentComplexTypeProperty) {
+                    // Update the complex type data display
+                    const display = group.querySelector('.complex-type-field');
+                    if (display) {
+                        display.innerHTML = `<pre>${JSON.stringify(complexTypeData, null, 2)}</pre>`;
+                    }
+
+                    // Store data for saving
+                    if (!this.currentEntity.entity) {
+                        this.currentEntity.entity = {};
+                    }
+                    this.currentEntity.entity[this.currentComplexTypeProperty] = complexTypeData;
+                }
+            });
+        }
+
+        this.hideComplexTypeModal();
     }
 }
 

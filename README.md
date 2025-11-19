@@ -4,6 +4,7 @@ A dynamic JavaScript application for exploring and visualizing OData services. T
 
 ## Features
 
+### Data Exploration
 - **Automatic Metadata Discovery**: Reads and parses the `$metadata` endpoint to understand the service structure
 - **Entity Set Tree**: Displays all available entity sets in an organized tree view
 - **Dynamic Grid View**: Shows entities in a data table with pagination support
@@ -21,14 +22,35 @@ A dynamic JavaScript application for exploring and visualizing OData services. T
   - Textareas for long text fields
 - **Navigation Properties**: Supports viewing related entities through navigation properties
 - **Recursive Exploration**: Allows drilling down through collections and related entities infinitely
+
+### Authentication & Security
+- **Keycloak/OpenID Connect Integration**: Full authentication support with Keycloak
+- **JWT Token Management**: Automatic token refresh and session persistence
+- **Configurable Auth**: Easy setup via UI for realm, client ID, and server URL
+- **User Info Display**: Shows authenticated user information
+- **Secure API Calls**: Automatically includes authentication headers in all requests
+
+### CRUD Operations
+- **Create Entities**: Create new entities with automatically generated forms
+- **Edit Entities**: Edit existing entities with in-place form editing
+- **Delete Entities**: Delete entities with confirmation dialogs
+- **Save Operations**: Full support for POST (create) and PATCH (update) operations
+- **Complex Type Support**: Edit complex/nested properties via modal dialogs
+- **Validation**: Type-aware validation and input controls
+
+### Additional Features
+- **Complex Types**: Full support for parsing and editing complex type properties
+- **Modal Dialogs**: Clean UI for authentication config and complex type editing
+- **Responsive Design**: Works on desktop and mobile devices
 - **CORS Support**: Works with OData services that support CORS
 
 ## Files
 
 - `index.html` - Main application structure
 - `styles.css` - Styling and layout
-- `odataService.js` - OData service interaction and metadata parsing
-- `app.js` - Application logic and UI management
+- `auth.js` - Keycloak/OpenID Connect authentication module
+- `odataService.js` - OData service interaction, metadata parsing, and CRUD operations
+- `app.js` - Application logic, UI management, and CRUD workflows
 
 ## Usage
 
@@ -68,6 +90,68 @@ A dynamic JavaScript application for exploring and visualizing OData services. T
 7. **Navigate Relationships**:
    - Click "View Collection" or "View Related Entity" buttons for navigation properties
    - Use the "Back" button to return to previous views
+
+### Authentication Setup
+
+1. **Configure Keycloak**:
+   - Click the ⚙️ (settings) button in the header
+   - Enter your Keycloak configuration:
+     - **Realm**: Your Keycloak realm name
+     - **Client ID**: Your client ID for the application
+     - **Base URL** (optional): Leave empty to use the same domain, or enter your Keycloak server URL
+   - Click "Save Configuration"
+
+2. **Login**:
+   - Click the "Login" button in the header
+   - You'll be redirected to Keycloak for authentication
+   - After successful login, you'll be redirected back with your username displayed
+   - You can now perform CRUD operations
+
+3. **Logout**:
+   - Click the "Logout" button to end your session
+
+### CRUD Operations
+
+**Note**: Authentication is required for all CRUD operations (Create, Update, Delete)
+
+#### Creating Entities
+
+1. Select an entity set from the tree
+2. Click the "➕ New" button in the grid header
+3. Fill in the form with appropriate values:
+   - Required fields are marked with *
+   - Input types match the property types (text, number, datetime, etc.)
+   - For complex types, click the "Edit" button to open a modal dialog
+4. Click "💾 Save" to create the entity
+5. Click "✖️ Cancel" to discard changes
+
+#### Editing Entities
+
+1. Click on any row in the grid to view the entity details
+2. Click the "✏️ Edit" button in the detail view
+3. Modify the values in the form:
+   - Key properties cannot be modified
+   - All other fields become editable
+   - For complex types, click "Edit" to modify in a modal
+4. Click "💾 Save" to update the entity
+5. Click "✖️ Cancel" to discard changes and revert to original values
+
+#### Deleting Entities
+
+1. Click on any row in the grid to view the entity details
+2. Click the "🗑️ Delete" button
+3. Confirm the deletion in the dialog
+4. The entity will be permanently deleted from the service
+
+#### Working with Complex Types
+
+Complex types (nested objects) are displayed as JSON in the detail view:
+
+1. In edit/create mode, click the "Edit" button next to a complex type field
+2. A modal dialog opens with individual fields for all complex type properties
+3. Edit the values as needed
+4. Click "OK" to save changes to the complex type
+5. The updated complex type data will be included when saving the entity
 
 ### Example OData Services
 
@@ -191,10 +275,20 @@ const result = await this.odataService.fetchEntitySet(entitySetName, {
 
 ## Limitations
 
-- Read-only: No create, update, or delete operations
-- Basic type support: Complex types and enums require additional handling
-- No authentication: Works only with public services or pre-authenticated sessions
-- Requires CORS-enabled services
+- **Enum Support**: Enumerations are treated as strings (no dropdown for enum values)
+- **Batch Operations**: No support for OData batch requests
+- **Function/Action Imports**: OData functions and actions are not yet supported
+- **Media Entities**: Binary/media entity types not fully supported
+- **CORS**: Requires CORS-enabled OData services for browser access
+- **Authentication**: Currently supports only Keycloak/OpenID Connect (configurable)
+
+## Security Considerations
+
+- **Token Storage**: JWT tokens are stored in sessionStorage (cleared on browser close)
+- **HTTPS Required**: Always use HTTPS for production deployments with authentication
+- **CORS**: Ensure your OData service and Keycloak server have appropriate CORS settings
+- **Client-Side App**: This is a client-side application - all data is processed in the browser
+- **Public Clients**: Keycloak client should be configured as a "public" client (no client secret)
 
 ## Troubleshooting
 
@@ -220,13 +314,16 @@ This is a demonstration application. Feel free to use and modify for your needs.
 
 Suggestions and improvements are welcome. Some ideas for enhancement:
 
-- Add export to CSV/Excel functionality
-- Implement column sorting (click headers to sort)
-- Add support for function imports and actions
-- Create a favorites/bookmarks system for services
-- Add dark mode theme
-- Support for batch operations
-- Add save/export filter configurations
-- Implement advanced filter builder with AND/OR logic
-- Add data visualization (charts/graphs)
-- Support for editing and creating entities
+- **Export Functionality**: Add export to CSV/Excel functionality
+- **Column Sorting**: Implement column sorting (click headers to sort)
+- **Batch Operations**: Support for OData batch requests
+- **Function/Action Imports**: Add support for executing OData functions and actions
+- **Enum Support**: Dropdown selectors for enumeration types
+- **Favorites/Bookmarks**: System for saving frequently used services and queries
+- **Dark Mode**: Add dark/light theme toggle
+- **Advanced Filters**: Implement filter builder with AND/OR logic
+- **Data Visualization**: Add charts and graphs for data analysis
+- **Multi-Auth Support**: Add support for other OAuth providers (Azure AD, Auth0, etc.)
+- **File Upload**: Support for media entities and file uploads
+- **Offline Mode**: Cache data for offline browsing
+- **Query Builder**: Visual query builder for complex OData queries
