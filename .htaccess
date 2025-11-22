@@ -1,0 +1,20 @@
+# Enable Passenger
+PassengerEnabled On
+
+# Set the Python interpreter
+PassengerPython /usr/bin/python3
+
+# Set the application startup file
+PassengerAppRoot /home/user/WernerTest
+
+# Set the WSGI file
+PassengerStartupFile passenger_wsgi.py
+
+# Disable directory listing
+Options -Indexes
+
+# Force HTTPS (recommended for login functionality)
+# Uncomment the following lines if you have SSL enabled
+# RewriteEngine On
+# RewriteCond %{HTTPS} !=on
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]

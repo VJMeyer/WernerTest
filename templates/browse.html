@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Files{% endblock %}
+
+{% block content %}
+<div class="browse-container">
+    <!-- Breadcrumb Navigation -->
+    <div class="breadcrumb">
+        <a href="{{ url_for('browse') }}">Home</a>
+        {% for crumb in breadcrumbs %}
+        <span class="separator">/</span>
+        <a href="{{ url_for('browse', subpath=crumb.path) }}">{{ crumb.name }}</a>
+        {% endfor %}
+    </div>
+
+    <!-- Folders Section -->
+    {% if folders %}
+    <section class="folders-section">
+        <h2>Folders</h2>
+        <div class="items-grid">
+            {% for folder in folders %}
+            <div class="item folder-item">
+                <a href="{{ url_for('browse', subpath=(current_path + '/' + folder.name) if current_path else folder.name) }}" class="item-link">
+                    <div class="item-icon">📁</div>
+                    <div class="item-name">{{ folder.display_name }}</div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Files Section -->
+    {% if files %}
+    <section class="files-section">
+        <h2>Files</h2>
+        <div class="files-list">
+            {% for file in files %}
+            <div class="file-item">
+                <div class="file-header">
+                    <a href="{{ url_for('view_file', filepath=(current_path + '/' + file.name) if current_path else file.name) }}"
+                       class="file-link" target="_blank">
+                        <span class="file-icon">📄</span>
+                        <span class="file-name">{{ file.display_name }}</span>
+                        <span class="file-extension">.{{ file.extension }}</span>
+                    </a>
+                </div>
+
+                <!-- Associated Image -->
+                {% if file.image %}
+                <div class="file-preview">
+                    <img src="{{ url_for('view_image', filepath=(current_path + '/' + file.image) if current_path else file.image) }}"
+                         alt="{{ file.display_name }}"
+                         class="preview-image">
+                </div>
+                {% endif %}
+
+                <!-- Associated Markdown -->
+                {% if file.markdown %}
+                <div class="file-description">
+                    {{ file.markdown | safe }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Empty Directory Message -->
+    {% if not folders and not files %}
+    <div class="empty-message">
+        <p>This directory is empty.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
